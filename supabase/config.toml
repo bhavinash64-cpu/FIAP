@@ -1,0 +1,14 @@
+project_id = "wfuxtealkrudukvpmtrg"
+
+[auth]
+enable_signup = false
+
+[auth.email]
+enable_signup = false
+enable_confirmations = false
+
+[functions.extract-questions]
+verify_jwt = true
+
+[functions.submit-response]
+verify_jwt = false
