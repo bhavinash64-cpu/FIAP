@@ -1,36 +1,76 @@
-import { useEffect, useState } from "react";
+﻿import { createContext, createElement, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
-export function useAuth() {
+type AuthState = {
+  session: Session | null;
+  user: User | null;
+  isSuperAdmin: boolean;
+  loading: boolean;
+};
+
+const AuthContext = createContext<AuthState | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) {
-        setTimeout(() => loadRole(s.user.id), 0);
-      } else {
+    let active = true;
+
+    async function applySession(nextSession: Session | null) {
+      if (!active) return;
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+
+      if (!nextSession?.user) {
         setIsSuperAdmin(false);
+        setLoading(false);
+        return;
       }
-    });
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      if (data.session?.user) loadRole(data.session.user.id);
+
+      const role = await loadRole(nextSession.user.id);
+      if (!active) return;
+      setIsSuperAdmin(role);
       setLoading(false);
+    }
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setLoading(true);
+      void applySession(nextSession);
     });
-    return () => sub.subscription.unsubscribe();
+
+    supabase.auth.getSession().then(({ data }) => {
+      void applySession(data.session);
+    });
+
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
-  async function loadRole(uid: string) {
-    const { data } = await supabase.from("user_roles").select("role").eq("user_id", uid).eq("role", "super_admin");
-    setIsSuperAdmin((data ?? []).length > 0);
-  }
+  const value = useMemo(() => ({ session, user, isSuperAdmin, loading }), [session, user, isSuperAdmin, loading]);
 
-  return { session, user, isSuperAdmin, loading };
+  return createElement(AuthContext.Provider, { value }, children);
+}
+
+async function loadRole(uid: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", uid)
+    .eq("role", "super_admin")
+    .maybeSingle();
+
+  if (error) return false;
+  return data?.role === "super_admin";
+}
+
+export function useAuth() {
+  const state = useContext(AuthContext);
+  if (!state) throw new Error("useAuth must be used inside AuthProvider");
+  return state;
 }

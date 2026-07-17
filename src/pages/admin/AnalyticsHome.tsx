@@ -1,21 +1,24 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { BarChart3, ArrowUpRight, Users, ClipboardList, TrendingUp } from "lucide-react";
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from "recharts";
-import { listSurveys, type SurveyWithCounts } from "@/lib/surveys";
+import { listSurveys } from "@/lib/surveys";
 import { StatusBadge } from "@/components/survey/StatusBadge";
 import { CountUp } from "@/components/CountUp";
+import { PageContainer, PageHeader } from "@/components/admin/PageContainer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useT } from "@/lib/i18n";
 import { staggerParent, staggerChild } from "@/lib/motion";
 
 export default function AnalyticsHome() {
-  const [surveys, setSurveys] = useState<SurveyWithCounts[] | null>(null);
-
-  useEffect(() => {
-    listSurveys().then(setSurveys).catch(() => setSurveys([]));
-  }, []);
+  const t = useT();
+  // Shared query key with every other page that lists surveys, so navigating
+  // here from the dashboard or QR page is instant off the cache.
+  const { data: surveysData } = useQuery({ queryKey: ["surveys"], queryFn: listSurveys });
+  const surveys = surveysData ?? null;
 
   const stats = useMemo(() => {
     const list = surveys ?? [];
@@ -32,15 +35,15 @@ export default function AnalyticsHome() {
     .slice(0, 8);
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] px-6 py-8 sm:px-8">
-      <header>
-        <div className="eyebrow text-primary">Insight</div>
-        <h1 className="t-title mt-2">Analytics</h1>
-        <p className="t-body mt-3 max-w-xl text-muted-foreground">Response trends, per-question breakdowns and text-answer review — open any survey for the full dashboard.</p>
-      </header>
+    <PageContainer>
+      <PageHeader
+        eyebrow={t("navGroupInsights")}
+        title={t("navAnalytics")}
+        subtitle="Response trends, per-question breakdowns and text-answer review — open any survey for the full dashboard."
+      />
 
       {/* Summary */}
-      <motion.div variants={staggerParent} initial="hidden" animate="show" className="mt-8 grid grid-cols-2 gap-6 lg:grid-cols-4">
+      <motion.div variants={staggerParent} initial="hidden" animate="show" className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Summary icon={ClipboardList} label="Surveys" value={stats.total} sub={`${stats.published} live`} />
         <Summary icon={Users} label="Responses" value={stats.responses} sub="all time" />
         <Summary icon={BarChart3} label="Questions" value={stats.questions} sub="across surveys" />
@@ -102,7 +105,7 @@ export default function AnalyticsHome() {
 
       {/* Full cards */}
       {surveys && surveys.length > 0 && (
-        <motion.div variants={staggerParent} initial="hidden" animate="show" className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <motion.div variants={staggerParent} initial="hidden" animate="show" className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
           {surveys.map((s) => (
             <motion.div key={s.id} variants={staggerChild}>
               <Card className="h-full transition-[transform,box-shadow] duration-base ease-out hover:-translate-y-[2px] hover:shadow-md">
@@ -122,7 +125,7 @@ export default function AnalyticsHome() {
           ))}
         </motion.div>
       )}
-    </div>
+    </PageContainer>
   );
 }
 

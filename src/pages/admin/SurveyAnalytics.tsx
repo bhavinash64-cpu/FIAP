@@ -64,7 +64,7 @@ export default function SurveyAnalytics() {
 
   if (!survey || !questions) {
     return (
-      <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+      <div className="w-full space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div className="space-y-3">
           <Skeleton className="h-4 w-24" />
           <Skeleton className="h-8 w-72" />
@@ -82,7 +82,7 @@ export default function SurveyAnalytics() {
   const hasResponses = (stats?.totalResponses ?? 0) > 0;
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] px-6 py-8 sm:px-8 space-y-8">
+    <div className="w-full px-4 py-6 sm:px-6 sm:py-8 lg:px-8 space-y-8">
       <div>
         <Button asChild variant="ghost" size="sm" className="-ml-2">
           <Link to={`/app/surveys/${survey.id}/edit`}><ArrowLeft className="mr-2" strokeWidth={1.5} />Back to editor</Link>

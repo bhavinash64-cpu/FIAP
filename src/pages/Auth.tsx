@@ -10,7 +10,14 @@ import { Label } from "@/components/ui/label";
 import { LangToggle } from "@/components/LangToggle";
 import { BrandMark } from "@/components/BrandMark";
 import { toast } from "sonner";
-import authIllustration from "@/assets/auth-illustration.png";
+// Responsive WebP set + a PNG fallback, all generated from the 1.4MB source by
+// `node scripts/optimize-images.mjs`. The source is a soft flat-shaded render,
+// so it survives WebP at 5–17KB — a phone was previously downloading the full
+// 1.4MB PNG for an illustration that `hidden lg:flex` never even showed it.
+import authWebp640 from "@/assets/auth-illustration-640.webp";
+import authWebp1024 from "@/assets/auth-illustration-1024.webp";
+import authWebp1536 from "@/assets/auth-illustration-1536.webp";
+import authFallback from "@/assets/auth-illustration-fallback.png";
 
 /* ────────────────────────────────────────────────────────────────────────
    Jeevana Insight — Sign in
@@ -85,43 +92,60 @@ export default function Auth() {
         }}
       />
 
-      {/* Floating language switcher — minimal, top-right */}
-      <div className="absolute right-6 top-6 z-30 sm:right-8 sm:top-8">
+      {/* Floating language switcher — minimal, top-right. Sits above the mobile
+          banner, so it needs the banner's own stacking context to stay tappable. */}
+      <div className="absolute right-4 top-4 z-30 sm:right-8 sm:top-8">
         <LangToggle />
       </div>
 
       <div className="relative z-10 grid min-h-dvh lg:grid-cols-[2.9fr_minmax(460px,1.1fr)]">
-        {/* ══ LEFT · editorial ═══════════════════════════════════════════════ */}
-        <aside className="relative hidden overflow-hidden border-r border-border bg-canvas lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16">
+        {/* ══ LEFT on desktop · a banner ABOVE the form on mobile ════════════
+            One element, two treatments: a fixed-height illustrated banner on
+            phones and the full editorial panel from 1024px. The alternative —
+            a second mobile-only <img> — would ship duplicate DOM and a second
+            download for the same artwork. */}
+        <aside className="relative flex h-40 flex-col justify-between overflow-hidden border-b border-border bg-canvas xs:h-48 sm:h-60 lg:h-auto lg:border-b-0 lg:border-r lg:p-12 xl:p-16">
           {/* Illustration — fills the entire panel, edge to edge */}
-          <img
-            src={authIllustration}
-            alt=""
-            aria-hidden
-            draggable={false}
-            className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover object-center"
-          />
+          <picture>
+            <source
+              type="image/webp"
+              srcSet={`${authWebp640} 640w, ${authWebp1024} 1024w, ${authWebp1536} 1536w`}
+              sizes="(min-width: 1024px) 66vw, 100vw"
+            />
+            <img
+              src={authFallback}
+              alt=""
+              aria-hidden
+              draggable={false}
+              width={1536}
+              height={1024}
+              decoding="async"
+              className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover object-center"
+            />
+          </picture>
           {/* Legibility scrim — keeps the headline crisp over the artwork */}
           <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-b from-canvas/80 via-canvas/10 to-canvas/45" />
 
           {/* Top group — brand + editorial headline, over the artwork */}
-          <div className="relative z-10">
+          <div className="relative z-10 p-5 sm:p-6 lg:p-0">
             <motion.div
               initial={reduce ? { opacity: 0 } : { opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: EASE }}
               className="flex items-center gap-3"
             >
-              <span className="grid h-11 w-11 place-items-center rounded-control bg-surface shadow-sm ring-1 ring-border">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-control bg-surface shadow-sm ring-1 ring-border">
                 <BrandMark className="h-6 w-6" />
               </span>
-              <div className="leading-tight">
-                            <span className="block t-body font-semibold tracking-tight">Jeevana Insight</span>
-                            <span className="block t-caption text-muted-foreground">Family Assessment Platform</span>
-                          </div>
+              <div className="min-w-0 leading-tight">
+                <span className="block truncate t-body font-semibold tracking-tight">Jeevana Insight</span>
+                <span className="block truncate t-caption text-muted-foreground">Family Assessment Platform</span>
+              </div>
             </motion.div>
 
-            <motion.div initial="hidden" animate="show" variants={container} className="mt-10 max-w-[30rem]">
+            {/* The editorial headline is a desktop luxury — on a 160px banner it
+                would fight the artwork and shove the form below the fold. */}
+            <motion.div initial="hidden" animate="show" variants={container} className="mt-10 hidden max-w-[30rem] lg:block">
               <motion.p variants={item} className="eyebrow text-primary">
                 Private workspace
               </motion.p>
@@ -142,7 +166,7 @@ export default function Auth() {
             initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: EASE, delay: 0.5 }}
-            className="relative z-10 flex items-center gap-2 t-caption text-muted-foreground"
+            className="relative z-10 hidden items-center gap-2 t-caption text-muted-foreground lg:flex"
           >
             <span className="inline-flex h-1.5 w-1.5 rounded-pill bg-primary/60" />
             Private
@@ -155,28 +179,22 @@ export default function Auth() {
         </aside>
 
         {/* ══ RIGHT · the sign-in card ═══════════════════════════════════════ */}
-        <main className="relative flex items-center justify-center px-6 py-16">
+        <main className="relative flex items-start justify-center px-4 py-8 sm:px-6 sm:py-12 lg:items-center lg:py-16">
           <motion.div
             initial={reduce ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.99 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.7, ease: EASE, delay: 0.1 }}
             className="w-full max-w-[24rem]"
           >
-            {/* Compact brand — small screens only */}
-            <div className="mb-8 flex items-center justify-center gap-3 lg:hidden">
-              <span className="grid h-11 w-11 place-items-center rounded-control bg-surface shadow-sm ring-1 ring-border">
-                <BrandMark className="h-6 w-6" />
-              </span>
-              <span className="t-body font-semibold tracking-tight">Jeevana Insight</span>
-            </div>
-
-            {/* The card — a premium, illuminated white surface (the anchor) */}
-            <div className="relative rounded-surface border border-border bg-card p-6 shadow-[var(--highlight-top),var(--shadow-float)]">
+            {/* The card — a premium, illuminated white surface (the anchor).
+                Flush to the 16px gutter at 320px; the old fixed p-6 left just
+                224px of usable field width there. */}
+            <div className="relative rounded-surface border border-border bg-card p-5 shadow-[var(--highlight-top),var(--shadow-float)] xs:p-6">
               <div className="flex flex-col items-center text-center">
                 <span className="grid h-14 w-14 place-items-center rounded-pill bg-accent-tint text-primary ring-1 ring-primary/10">
                   <UserRound className="h-6 w-6" strokeWidth={1.5} />
                 </span>
-                <h2 className="t-section mt-6">Welcome back</h2>
+                <h2 className="t-section mt-4 sm:mt-6">Welcome back</h2>
                 <p className="mt-2 t-caption text-muted-foreground">
                   Sign in to continue to your secure workspace
                 </p>
@@ -185,14 +203,14 @@ export default function Auth() {
               {error && (
                 <div
                   role="alert"
-                  className="mt-6 flex items-start gap-2 rounded-field border border-danger/25 bg-[hsl(var(--danger)/0.06)] p-4 t-caption leading-relaxed text-danger"
+                  className="mt-5 flex items-start gap-2 rounded-field border border-danger/25 bg-[hsl(var(--danger)/0.06)] p-3.5 t-caption leading-relaxed text-danger sm:mt-6 sm:p-4"
                 >
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                  <div>{error}</div>
+                  <div className="min-w-0 break-words">{error}</div>
                 </div>
               )}
 
-              <form onSubmit={signIn} className="mt-8 space-y-4" noValidate>
+              <form onSubmit={signIn} className="mt-6 space-y-4 sm:mt-8" noValidate>
                 <div className="space-y-2">
                   <Label htmlFor="si-email" className="t-caption font-medium text-foreground/80">
                     Email address
@@ -234,7 +252,10 @@ export default function Auth() {
                       onClick={() => setShowPw((v) => !v)}
                       aria-label={showPw ? "Hide password" : "Show password"}
                       aria-pressed={showPw}
-                      className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-pill text-tertiary transition-colors hover:bg-sunken hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[hsl(var(--focus-ring)/0.35)]"
+                      // touch-halo rather than a bigger box: nothing sits beside
+                      // it to steal taps from, and growing it would crowd the
+                      // field's right padding on desktop.
+                      className="touch-halo absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-pill text-tertiary transition-colors hover:bg-sunken hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[hsl(var(--focus-ring)/0.35)]"
                     >
                       {showPw ? <EyeOff className="h-[17px] w-[17px]" /> : <Eye className="h-[17px] w-[17px]" />}
                     </button>

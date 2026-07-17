@@ -25,7 +25,7 @@ export default function Responses() {
   const rows = surveys ?? [];
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] px-6 py-8 sm:px-8">
+    <div className="w-full px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <header>
         <div className="eyebrow text-primary">Data</div>
         <h1 className="t-title mt-2">Responses</h1>

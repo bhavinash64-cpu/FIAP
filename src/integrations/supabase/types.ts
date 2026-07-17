@@ -124,6 +124,147 @@ export type Database = {
           },
         ]
       }
+      question_bank_instruments: {
+        Row: {
+          blurb_en: string | null
+          blurb_te: string | null
+          code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_builtin: boolean
+          name_en: string
+          name_te: string | null
+          order_index: number
+          source: string | null
+          source_item_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          blurb_en?: string | null
+          blurb_te?: string | null
+          code: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_builtin?: boolean
+          name_en: string
+          name_te?: string | null
+          order_index?: number
+          source?: string | null
+          source_item_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          blurb_en?: string | null
+          blurb_te?: string | null
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_builtin?: boolean
+          name_en?: string
+          name_te?: string | null
+          order_index?: number
+          source?: string | null
+          source_item_count?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_bank_instruments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      question_bank_items: {
+        Row: {
+          created_at: string
+          id: string
+          instrument_id: string
+          is_builtin: boolean
+          kind: Database["public"]["Enums"]["question_kind"]
+          order_index: number
+          prompt_en: string
+          prompt_te: string | null
+          required: boolean
+          source_snapshot: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          instrument_id: string
+          is_builtin?: boolean
+          kind?: Database["public"]["Enums"]["question_kind"]
+          order_index?: number
+          prompt_en: string
+          prompt_te?: string | null
+          required?: boolean
+          source_snapshot?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instrument_id?: string
+          is_builtin?: boolean
+          kind?: Database["public"]["Enums"]["question_kind"]
+          order_index?: number
+          prompt_en?: string
+          prompt_te?: string | null
+          required?: boolean
+          source_snapshot?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_bank_items_instrument_id_fkey"
+            columns: ["instrument_id"]
+            isOneToOne: false
+            referencedRelation: "question_bank_instruments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      question_bank_item_options: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          label_en: string
+          label_te: string | null
+          order_index: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          label_en: string
+          label_te?: string | null
+          order_index?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          label_en?: string
+          label_te?: string | null
+          order_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_bank_item_options_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "question_bank_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       survey_question_options: {
         Row: {
           created_at: string
@@ -169,6 +310,7 @@ export type Database = {
           prompt_en: string
           prompt_te: string | null
           required: boolean
+          section_id: string | null
           source_ref: string | null
           survey_id: string
           updated_at: string
@@ -182,6 +324,7 @@ export type Database = {
           prompt_en: string
           prompt_te?: string | null
           required?: boolean
+          section_id?: string | null
           source_ref?: string | null
           survey_id: string
           updated_at?: string
@@ -195,11 +338,19 @@ export type Database = {
           prompt_en?: string
           prompt_te?: string | null
           required?: boolean
+          section_id?: string | null
           source_ref?: string | null
           survey_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "survey_questions_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "survey_sections"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "survey_questions_source_ref_fkey"
             columns: ["source_ref"]
@@ -247,6 +398,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "survey_responses_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      survey_sections: {
+        Row: {
+          collapsed: boolean
+          created_at: string
+          description_en: string | null
+          description_te: string | null
+          id: string
+          order_index: number
+          survey_id: string
+          title_en: string
+          title_te: string | null
+          updated_at: string
+        }
+        Insert: {
+          collapsed?: boolean
+          created_at?: string
+          description_en?: string | null
+          description_te?: string | null
+          id?: string
+          order_index?: number
+          survey_id: string
+          title_en?: string
+          title_te?: string | null
+          updated_at?: string
+        }
+        Update: {
+          collapsed?: boolean
+          created_at?: string
+          description_en?: string | null
+          description_te?: string | null
+          id?: string
+          order_index?: number
+          survey_id?: string
+          title_en?: string
+          title_te?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_sections_survey_id_fkey"
             columns: ["survey_id"]
             isOneToOne: false
             referencedRelation: "surveys"
@@ -362,6 +560,10 @@ export type Database = {
           value: string
         }[]
       }
+      reorder_question_bank_items: { Args: { p_ids: string[] }; Returns: undefined }
+      reorder_survey_options: { Args: { items: Json }; Returns: undefined }
+      reorder_survey_questions: { Args: { items: Json }; Returns: undefined }
+      reorder_survey_sections: { Args: { items: Json }; Returns: undefined }
       survey_period_comparison: {
         Args: { p_period: string; p_survey_id: string }
         Returns: {

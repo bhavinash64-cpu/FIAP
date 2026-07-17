@@ -32,6 +32,7 @@ function makeQuestion(kind: QuestionKind, prompt_en: string, options: string[] =
     required: true,
     origin: "manual",
     source_ref: null,
+    section_id: null,
     options: options.map((label_en, i) => ({ id: nextId(), question_id: "demo", order_index: i, label_en, label_te: null })),
   };
 }

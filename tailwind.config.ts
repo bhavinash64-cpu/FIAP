@@ -6,7 +6,24 @@ export default {
   content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   prefix: "",
   theme: {
-    container: { center: true, padding: "1.5rem", screens: { "2xl": "1400px" } },
+    container: {
+      center: true,
+      // 320px screens cannot afford 24px gutters on both sides; 1024+ keeps the
+      // 1.5rem the desktop design was built against.
+      padding: { DEFAULT: "1rem", xs: "1.25rem", sm: "1.5rem", lg: "1.5rem" },
+      screens: { "2xl": "1400px" },
+    },
+    screens: {
+      // 320 is the mobile-first base and needs no breakpoint. `xs` splits the
+      // small phones (320–374) from the 375/390/414 class, which can afford a
+      // little more gutter and a second column in places 320 cannot.
+      xs: "375px",
+      sm: "640px",
+      md: "768px",   // tablet — collapsible sidebar starts here
+      lg: "1024px",  // desktop — full sidebar, layout frozen as designed
+      xl: "1280px",
+      "2xl": "1536px",
+    },
     extend: {
       colors: {
         border: "hsl(var(--border))",

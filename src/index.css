@@ -97,6 +97,10 @@
     --shadow-float: 0 12px 40px rgba(28, 28, 30, 0.08), 0 4px 12px rgba(28, 28, 30, 0.04);
     --shadow-lg: var(--shadow-float);   /* back-compat alias */
 
+    /* ── Mobile chrome ─────────────────────────────────────────────────── */
+    --bottom-nav-h: 64px;   /* bottom tab bar, excludes the safe-area inset */
+    --topbar-h: 56px;
+
     /* ── Motion ────────────────────────────────────────────────────────── */
     --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
     --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
@@ -169,6 +173,21 @@
     font-optical-sizing: auto;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
     font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans Telugu", system-ui, sans-serif;
+    /* Backstop only — every real overflow source is fixed at the component.
+       `clip` rather than `hidden` because `hidden` would make the body a scroll
+       container and silently kill every `position: sticky` header in the app. */
+    overflow-x: clip;
+  }
+
+  /* Long unbroken strings (a survey slug, a pasted URL, an email in a table
+     cell) are the most common cause of a 320px page scrolling sideways. */
+  h1, h2, h3, h4, p, li, dd, dt, figcaption, blockquote {
+    overflow-wrap: break-word;
+  }
+
+  /* Media never outgrows its column. */
+  img, svg, video, canvas {
+    max-width: 100%;
   }
 
         /* Telugu font optimizations - prevent text overflow, improve readability */
@@ -225,17 +244,64 @@
         }
       }
 
-      /* Touch targets - ensure 44px minimum on mobile */
-      @media (max-width: 767px) {
-        button:not([class*="size-"]),
-        [role="button"]:not([class*="size-"]),
-        a:not([class*="size-"]),
-        input[type="checkbox"],
-        input[type="radio"],
-        select:not([class*="size-"]),
-        .touch-target {
-          min-height: 44px;
-          min-width: 44px;
+      /* ── Accessibility preferences (set in Settings, applied on <html>) ───
+         Large text scales the whole type system at the root, so every
+         rem/clamp-based size — including the assessment's t-question — grows
+         together. High contrast darkens borders and secondary text, the two
+         things that thin out most for low-vision and older readers. Both reach
+         the public survey route because they live on <html>, not in React. */
+      html.pref-large-text {
+        font-size: 118%;
+      }
+      html.pref-high-contrast {
+        --border-subtle: 240 6% 62%;
+        --border-strong: 240 8% 45%;
+        --text-secondary: 240 6% 26%;
+        --text-tertiary: 240 5% 38%;
+      }
+      html.pref-high-contrast.dark,
+      .dark.pref-high-contrast {
+        --border-subtle: 240 8% 42%;
+        --border-strong: 240 8% 55%;
+        --text-secondary: 240 8% 82%;
+        --text-tertiary: 240 6% 68%;
+      }
+
+      /* ── Touch targets ───────────────────────────────────────────────────
+         Sizing lives on the components (Button/Input/toggles all step up to
+         >=48px under `sm`), not in a blanket selector. The rule this replaces
+         tried `button:not([class*="size-"])`, which had two failure modes worth
+         remembering: `[class*="size-"]` matched the Button cva's own
+         `[&_svg]:size-[18px]`, so every design-system button was exempted — the
+         exact opposite of the intent — while bare `a` tags were NOT exempt, so
+         min-width:44px landed on inline prose links and broke their flow.
+
+         What remains: an opt-in utility, plus a floor for hand-rolled controls
+         that never opted into the component sizes. Scoped to coarse pointers so
+         a desktop mouse never inflates anything. */
+      .touch-target {
+        min-height: 48px;
+        min-width: 48px;
+      }
+
+      /* A control that must stay visually small (a 20px checkbox, a switch
+         track) gets its hit area from this instead of from its own box: it
+         projects a centred >=48px pseudo-element without touching layout.
+         Only for controls with breathing room around them — on a tight row of
+         adjacent icons, size the buttons up instead, or the invisible hit
+         areas overlap and steal each other's taps. */
+      @media (pointer: coarse) {
+        .touch-halo {
+          position: relative;
+        }
+        .touch-halo::after {
+          content: "";
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          height: max(100%, 48px);
+          width: max(100%, 48px);
+          transform: translate(-50%, -50%);
         }
       }
 
@@ -353,6 +419,20 @@
           padding-left: env(safe-area-inset-left);
           padding-right: env(safe-area-inset-right);
         }
+
+        /* Clears the fixed bottom tab bar, including the home-indicator inset,
+           so the last row of a list is never trapped underneath it. */
+        .pb-bottom-nav {
+          padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom) + var(--space-4));
+        }
+        .bottom-nav-safe {
+          padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        /* A sticky action bar that sits directly above the tab bar. */
+        .bottom-nav-offset {
+          bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom));
+        }
   
         /* Input focus rings - iOS style */
         .focus-ring-ios:focus-visible {
@@ -380,13 +460,30 @@
    Typography is the hero. One rhythm, everywhere. Every value from tokens.
    ══════════════════════════════════════════════════════════════════════════ */
 @layer components {
-  .t-display { font-size: 56px; line-height: 1.05; letter-spacing: -0.03em;  font-weight: 600; }
-  .t-hero    { font-size: 40px; line-height: 1.08; letter-spacing: -0.025em; font-weight: 600; }
-  .t-title   { font-size: 28px; line-height: 1.18; letter-spacing: -0.02em;  font-weight: 600; }
-  .t-section { font-size: 20px; line-height: 1.30; letter-spacing: -0.015em; font-weight: 600; }
-  .t-card    { font-size: 16px; line-height: 1.40; letter-spacing: -0.005em; font-weight: 600; }
+  /* Fluid type. Each clamp() reaches its ceiling — the exact desktop value the
+     scale has always used — at 1024px, so desktop is byte-for-byte unchanged and
+     only 320–1023px reflows. Body/caption stay fixed: shrinking reading text
+     below 15px costs legibility and buys nothing. */
+  .t-display { font-size: clamp(2rem, 1.2rem + 4vw, 56px);         line-height: 1.06; letter-spacing: -0.03em;  font-weight: 600; }
+  .t-hero    { font-size: clamp(1.625rem, 1.1rem + 2.6vw, 40px);   line-height: 1.1;  letter-spacing: -0.025em; font-weight: 600; }
+  .t-title   { font-size: clamp(1.3125rem, 1.05rem + 1.3vw, 28px); line-height: 1.2;  letter-spacing: -0.02em;  font-weight: 600; }
+  .t-section { font-size: clamp(1.0625rem, 0.98rem + 0.42vw, 20px);line-height: 1.32; letter-spacing: -0.015em; font-weight: 600; }
+  .t-card    { font-size: clamp(0.9375rem, 0.91rem + 0.13vw, 16px);line-height: 1.4;  letter-spacing: -0.005em; font-weight: 600; }
   .t-body    { font-size: 15px; line-height: 1.60; }
   .t-caption { font-size: 13px; line-height: 1.45; letter-spacing: 0.005em;  font-weight: 500; }
+
+  /* The question on the guided assessment — the largest reading text in the
+     product, and the only thing on its screen. Weight stays at 500 rather than
+     the scale's 600: at 32px a semibold clinical question reads as a demand,
+     and this screen is meant to read as someone asking, not a form insisting.
+     Line height is looser than t-hero for the same reason, and because Telugu
+     conjuncts need the room. */
+  .t-question {
+    font-size: clamp(1.375rem, 1.05rem + 1.6vw, 2rem);
+    line-height: 1.32;
+    letter-spacing: -0.015em;
+    font-weight: 500;
+  }
   .eyebrow {
     font-size: 12px; line-height: 1.40; letter-spacing: 0.08em;
     text-transform: uppercase; font-weight: 600; color: hsl(var(--text-tertiary));
@@ -446,6 +543,21 @@
     );
     background-size: 200% 100%;
     animation: shimmer 1.6s ease-in-out infinite;
+  }
+}
+
+/* ── Print ───────────────────────────────────────────────────────────────
+   Printing one artefact (a QR poster, a submission acknowledgement) out of a
+   full app screen. <PrintSheet> portals its content to a direct child of body
+   so this single rule can hide everything else — no per-page print stylesheet,
+   and no chance of a nested `visibility: hidden` leaking into the sheet.
+   The class is added only for the duration of the print; see lib/share.ts. */
+@media print {
+  body.printing > *:not(.print-sheet) {
+    display: none !important;
+  }
+  body.printing {
+    background: #fff;
   }
 }
 

@@ -1,6 +1,17 @@
-import { supabase } from "@/integrations/supabase/client";
-import { logAudit } from "@/lib/audit";
-import type { QuestionKind, SurveyQuestion, SurveyOption } from "@/lib/surveys";
+import type { QuestionKind } from "@/lib/surveys";
+
+// ---------------------------------------------------------------------------
+// SEED FIXTURE — not the runtime question bank.
+//
+// The bank now lives in the question_bank_* tables and is fully editable; read
+// it through @/lib/questionBank. This file is the source these tables were
+// seeded from (supabase/migrations/20260717130500_seed_question_bank.sql, which
+// scripts/generate-question-bank-seed.mjs regenerates from this constant).
+//
+// It is kept so the seed remains reproducible and reviewable in the repo. Do
+// not import INSTRUMENTS into a page: it cannot see anything a user has edited,
+// and reading it would silently show stale content.
+// ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // Question Library — the validated clinical/self-report instruments supplied
@@ -329,80 +340,6 @@ export function instrumentQuestionCount(inst: Instrument): number {
   return inst.items.length;
 }
 
-// ---------------------------------------------------------------------------
-// Import — inserts an instrument's items (with bilingual options) as questions
-// on a survey, appended after the current last question. Reuses the
-// import_batches provenance trail (source_type 'pdf', since these originate
-// from the supplied source PDFs).
-// ---------------------------------------------------------------------------
-
-export async function importInstruments(surveyId: string, keys: string[]): Promise<SurveyQuestion[]> {
-  const chosen = INSTRUMENTS.filter((i) => keys.includes(i.key));
-  if (!chosen.length) return [];
-
-  const totalCount = chosen.reduce((n, i) => n + i.items.length, 0);
-  const { data: user } = await supabase.auth.getUser();
-  const { data: batch, error: bErr } = await supabase
-    .from("import_batches")
-    .insert({
-      survey_id: surveyId,
-      source_type: "pdf",
-      file_name: chosen.map((i) => i.name).join(", "),
-      question_count: totalCount,
-      created_by: user.user?.id,
-    })
-    .select("id")
-    .single();
-  if (bErr) throw bErr;
-
-  const { data: existing } = await supabase
-    .from("survey_questions")
-    .select("order_index")
-    .eq("survey_id", surveyId)
-    .order("order_index", { ascending: false })
-    .limit(1);
-  let nextIndex = existing && existing.length ? existing[0].order_index + 1 : 0;
-
-  const created: SurveyQuestion[] = [];
-
-  for (const inst of chosen) {
-    for (const item of inst.items) {
-      const kind: QuestionKind = item.kind ?? inst.defaultKind ?? "multiple_choice";
-      const scale = item.scale ?? inst.defaultScale;
-
-      const { data: q, error: qErr } = await supabase
-        .from("survey_questions")
-        .insert({
-          survey_id: surveyId,
-          kind,
-          order_index: nextIndex++,
-          prompt_en: item.en,
-          prompt_te: item.te ?? null,
-          required: true,
-          origin: "pdf",
-          source_ref: batch.id,
-        })
-        .select("*")
-        .single();
-      if (qErr) throw qErr;
-
-      let options: SurveyOption[] = [];
-      const needsOptions = kind === "multiple_choice" || kind === "checkboxes" || kind === "dropdown";
-      if (needsOptions && scale && scale.length) {
-        const { data: opts, error: oErr } = await supabase
-          .from("survey_question_options")
-          .insert(scale.map((p, i) => ({ question_id: q.id, order_index: i, label_en: p.en, label_te: p.te ?? null })))
-          .select("*");
-        if (oErr) throw oErr;
-        options = (opts ?? []) as SurveyOption[];
-      }
-      created.push({ ...(q as Omit<SurveyQuestion, "options">), options });
-    }
-  }
-
-  await logAudit("question.import.library", "survey", surveyId, {
-    instruments: chosen.map((i) => i.key),
-    count: created.length,
-  });
-  return created;
-}
+// importInstruments() lived here. It read INSTRUMENTS directly, so it could
+// never import a question the user had edited. Replaced by
+// importInstrumentsToSurvey() in @/lib/questionBank, which reads the tables.

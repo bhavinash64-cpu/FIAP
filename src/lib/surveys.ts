@@ -36,7 +36,20 @@ export interface SurveyQuestion {
   required: boolean;
   origin: QuestionOrigin;
   source_ref: string | null;
+  /** null = ungrouped; questions predating sections all start here. */
+  section_id: string | null;
   options: SurveyOption[];
+}
+
+export interface SurveySection {
+  id: string;
+  survey_id: string;
+  order_index: number;
+  title_en: string;
+  title_te: string | null;
+  description_en: string | null;
+  description_te: string | null;
+  collapsed: boolean;
 }
 
 export interface QuestionDraft {
@@ -152,12 +165,59 @@ export async function reopenSurvey(id: string) {
 // Survey + questions (admin, full detail)
 // ---------------------------------------------------------------------------
 
-export async function getSurveyWithQuestions(id: string): Promise<{ survey: Survey; questions: SurveyQuestion[] } | null> {
+export async function getSurveyWithQuestions(
+  id: string,
+): Promise<{ survey: Survey; questions: SurveyQuestion[]; sections: SurveySection[] } | null> {
   const { data: survey, error: sErr } = await supabase.from("surveys").select("*").eq("id", id).maybeSingle();
   if (sErr) throw sErr;
   if (!survey) return null;
-  const questions = await loadQuestions(id);
-  return { survey: survey as Survey, questions };
+  const [questions, sections] = await Promise.all([loadQuestions(id), listSections(id)]);
+  return { survey: survey as Survey, questions, sections };
+}
+
+// ---------------------------------------------------------------------------
+// Sections
+// ---------------------------------------------------------------------------
+
+export async function listSections(surveyId: string): Promise<SurveySection[]> {
+  const { data, error } = await supabase
+    .from("survey_sections")
+    .select("*")
+    .eq("survey_id", surveyId)
+    .order("order_index");
+  if (error) throw error;
+  return (data ?? []) as SurveySection[];
+}
+
+export async function createSection(surveyId: string, orderIndex: number, title_en = "Untitled section"): Promise<SurveySection> {
+  const { data, error } = await supabase
+    .from("survey_sections")
+    .insert({ survey_id: surveyId, order_index: orderIndex, title_en })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as SurveySection;
+}
+
+export async function updateSection(
+  id: string,
+  patch: Partial<Pick<SurveySection, "title_en" | "title_te" | "description_en" | "description_te" | "collapsed">>,
+) {
+  const { error } = await supabase.from("survey_sections").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+/** Questions in the section are released to Ungrouped by the FK's ON DELETE SET NULL. */
+export async function deleteSection(id: string) {
+  const { error } = await supabase.from("survey_sections").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function reorderSections(orderedIds: string[]) {
+  const { error } = await supabase.rpc("reorder_survey_sections", {
+    items: orderedIds.map((id, order_index) => ({ id, order_index })),
+  });
+  if (error) throw error;
 }
 
 async function loadQuestions(surveyId: string): Promise<SurveyQuestion[]> {
@@ -187,24 +247,28 @@ async function loadQuestions(surveyId: string): Promise<SurveyQuestion[]> {
 export async function createQuestion(
   surveyId: string,
   kind: QuestionKind = "short_text",
-  opts?: { origin?: QuestionOrigin; prompt_en?: string },
+  opts?: { origin?: QuestionOrigin; prompt_en?: string; section_id?: string | null; order_index?: number },
 ): Promise<SurveyQuestion> {
-  const { data: existing } = await supabase
-    .from("survey_questions")
-    .select("order_index")
-    .eq("survey_id", surveyId)
-    .order("order_index", { ascending: false })
-    .limit(1);
-  const nextIndex = existing && existing.length ? existing[0].order_index + 1 : 0;
+  let nextIndex = opts?.order_index;
+  if (nextIndex === undefined) {
+    const { data: existing } = await supabase
+      .from("survey_questions")
+      .select("order_index")
+      .eq("survey_id", surveyId)
+      .order("order_index", { ascending: false })
+      .limit(1);
+    nextIndex = existing && existing.length ? existing[0].order_index + 1 : 0;
+  }
   const { data, error } = await supabase
     .from("survey_questions")
     .insert({
       survey_id: surveyId,
       kind,
       order_index: nextIndex,
-      prompt_en: opts?.prompt_en || "Untitled question",
+      prompt_en: opts?.prompt_en ?? "",
       required: true,
       origin: opts?.origin ?? "manual",
+      section_id: opts?.section_id ?? null,
     })
     .select("*")
     .single();
@@ -306,6 +370,7 @@ export async function duplicateQuestion(q: SurveyQuestion): Promise<SurveyQuesti
       prompt_en: `${q.prompt_en} (copy)`,
       prompt_te: q.prompt_te,
       required: q.required,
+      section_id: q.section_id,
     })
     .select("*")
     .single();
@@ -322,7 +387,10 @@ export async function duplicateQuestion(q: SurveyQuestion): Promise<SurveyQuesti
   return { ...(data as Omit<SurveyQuestion, "options">), options };
 }
 
-export async function updateQuestion(id: string, patch: Partial<Pick<SurveyQuestion, "prompt_en" | "prompt_te" | "required" | "kind">>) {
+export async function updateQuestion(
+  id: string,
+  patch: Partial<Pick<SurveyQuestion, "prompt_en" | "prompt_te" | "required" | "kind" | "section_id">>,
+) {
   const { error } = await supabase.from("survey_questions").update(patch).eq("id", id);
   if (error) throw error;
 }
@@ -332,8 +400,15 @@ export async function deleteQuestion(id: string) {
   if (error) throw error;
 }
 
-export async function reorderQuestions(orderedIds: string[]) {
-  await Promise.all(orderedIds.map((id, index) => supabase.from("survey_questions").update({ order_index: index }).eq("id", id)));
+/**
+ * One round trip for the whole list. `placements` carries section_id too, so a
+ * drag that moves a question into another section persists both facts at once.
+ */
+export async function reorderQuestions(placements: { id: string; section_id: string | null }[]) {
+  const { error } = await supabase.rpc("reorder_survey_questions", {
+    items: placements.map((p, order_index) => ({ id: p.id, order_index, section_id: p.section_id })),
+  });
+  if (error) throw error;
 }
 
 // ---------------------------------------------------------------------------
@@ -361,7 +436,10 @@ export async function deleteOption(id: string) {
 }
 
 export async function reorderOptions(orderedIds: string[]) {
-  await Promise.all(orderedIds.map((id, index) => supabase.from("survey_question_options").update({ order_index: index }).eq("id", id)));
+  const { error } = await supabase.rpc("reorder_survey_options", {
+    items: orderedIds.map((id, order_index) => ({ id, order_index })),
+  });
+  if (error) throw error;
 }
 
 // ---------------------------------------------------------------------------

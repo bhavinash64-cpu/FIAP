@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   ArrowUpRight,
@@ -13,8 +14,8 @@ import {
 } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
-import { listSurveys, type SurveyWithCounts } from "@/lib/surveys";
-import { INSTRUMENTS } from "@/lib/instruments";
+import { listSurveys } from "@/lib/surveys";
+import { listBank } from "@/lib/questionBank";
 import { StatusBadge } from "@/components/survey/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { CountUp } from "@/components/CountUp";
@@ -47,32 +48,51 @@ function relTime(iso: string): string {
 }
 
 export default function Overview() {
-  const [surveys, setSurveys] = useState<SurveyWithCounts[] | null>(null);
-  const [responses, setResponses] = useState<Resp[]>([]);
-  const [activity, setActivity] = useState<AuditRow[]>([]);
-
-  useEffect(() => {
-    listSurveys().then(setSurveys).catch(() => setSurveys([]));
-    supabase.from("survey_responses").select("id, survey_id, submitted_at").order("submitted_at", { ascending: false }).limit(500).then(({ data }) => setResponses(data ?? []));
-    supabase.from("audit_logs").select("action, created_at").order("created_at", { ascending: false }).limit(12).then(({ data }) => setActivity((data ?? []) as AuditRow[]));
-  }, []);
+  // Every query is React-Query cached and shares keys with the other pages, so
+  // returning to the dashboard is instant and never refetches under the 30s
+  // staleTime. The bank is editable now, so its size is a query, not a constant.
+  const { data: surveysData } = useQuery({ queryKey: ["surveys"], queryFn: listSurveys });
+  const surveys = surveysData ?? null;
+  const { data: bank = [] } = useQuery({ queryKey: ["question-bank"], queryFn: listBank });
+  const { data: responses = [] } = useQuery({
+    queryKey: ["overview-responses"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("survey_responses")
+        .select("id, survey_id, submitted_at")
+        .order("submitted_at", { ascending: false })
+        .limit(500);
+      return (data ?? []) as Resp[];
+    },
+  });
+  const { data: activity = [] } = useQuery({
+    queryKey: ["overview-activity"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("audit_logs")
+        .select("action, created_at")
+        .order("created_at", { ascending: false })
+        .limit(12);
+      return (data ?? []) as AuditRow[];
+    },
+  });
 
   const stats = useMemo(() => {
     const list = surveys ?? [];
     const published = list.filter((s) => s.status === "published").length;
     const draft = list.filter((s) => s.status === "draft").length;
     const closed = list.filter((s) => s.status === "closed").length;
-    const bank = INSTRUMENTS.reduce((n, i) => n + i.items.length, 0);
     return {
       total: list.length,
       published,
       draft,
       closed,
       totalResponses: responses.length,
-      bank,
+      bank: bank.reduce((n, i) => n + i.items.length, 0),
+      instruments: bank.length,
       publishRate: list.length ? Math.round((published / list.length) * 100) : 0,
     };
-  }, [surveys, responses]);
+  }, [surveys, responses, bank]);
 
   const chartData = useMemo(() => {
     const days = 14;
@@ -114,7 +134,7 @@ export default function Overview() {
       <motion.div variants={staggerParent} initial="hidden" animate="show" className="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi icon={ClipboardList} tint="primary" label="Active surveys" value={stats.published} sub={`${stats.total} total`} />
         <Kpi icon={Inbox} tint="success" label="Total responses" value={stats.totalResponses} sub="all surveys" />
-        <Kpi icon={Layers} tint="violet" label="Questions in bank" value={stats.bank} sub={`${INSTRUMENTS.length} instruments`} />
+        <Kpi icon={Layers} tint="violet" label="Questions in bank" value={stats.bank} sub={`${stats.instruments} instrument${stats.instruments === 1 ? "" : "s"}`} />
         <Kpi icon={TrendingUp} tint="amber" label="Publish rate" value={stats.publishRate} suffix="%" sub="of all surveys" />
       </motion.div>
 
@@ -213,7 +233,7 @@ export default function Overview() {
               <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <span className="t-caption leading-snug">
                 {stats.totalResponses === 0
-                  ? `${stats.bank} validated questions ready to add from the library.`
+                  ? `${stats.bank} questions ready to add from the library.`
                   : `${stats.totalResponses} responses across ${stats.published} live survey${stats.published === 1 ? "" : "s"}.`}
               </span>
             </div>

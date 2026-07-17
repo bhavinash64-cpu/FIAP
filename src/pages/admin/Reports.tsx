@@ -44,7 +44,7 @@ export default function Reports() {
   const TrendIcon = comparison?.pctChange == null ? Minus : up ? TrendingUp : TrendingDown;
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] px-6 py-8 sm:px-8">
+    <div className="w-full px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       {/* Header + toolbar in one full-width band */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>

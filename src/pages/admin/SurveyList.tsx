@@ -72,7 +72,7 @@ export default function SurveyList() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] px-6 py-8 sm:px-8">
+    <div className="w-full px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="eyebrow text-primary">Studio</div>

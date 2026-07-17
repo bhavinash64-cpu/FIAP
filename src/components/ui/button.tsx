@@ -17,11 +17,16 @@ const buttonVariants = cva(
         ghost: "text-foreground hover:bg-sunken",
         link: "text-primary underline-offset-4 hover:underline",
       },
+      // Every size clears 48x48 on touch and drops to the original desktop
+      // value at `lg` (1024px) — the point where the finished desktop design
+      // takes over. `sm` in particular is 48px on a phone: a control being
+      // visually secondary is expressed by its variant, never by shrinking it
+      // under the thumb.
       size: {
-        default: "h-11 px-6",
-        sm: "h-9 rounded-control px-3.5 t-caption [&_svg]:size-4",
-        lg: "h-12 px-8 text-base",
-        icon: "h-11 w-11",
+        default: "h-12 px-5 lg:h-11 lg:px-6",
+        sm: "h-12 rounded-control px-4 t-caption [&_svg]:size-4 lg:h-9 lg:px-3.5",
+        lg: "h-[52px] px-6 text-base lg:h-12 lg:px-8",
+        icon: "h-12 w-12 lg:h-11 lg:w-11",
       },
     },
     defaultVariants: {
