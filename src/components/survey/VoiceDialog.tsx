@@ -164,7 +164,7 @@ export function VoiceDialog({
                 {[0, 1, 2, 3, 4].map((i) => (
                   <motion.span
                     key={i}
-                    className="w-1 rounded-full bg-primary"
+                    className="w-1 rounded-pill bg-primary"
                     animate={{ height: [6, 22, 6] }}
                     transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.12, ease: "easeInOut" }}
                   />

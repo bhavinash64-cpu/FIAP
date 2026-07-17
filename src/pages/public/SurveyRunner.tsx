@@ -1,23 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Shield, CheckCircle2, Lock, SearchX, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { SurveyForm } from "@/components/survey/SurveyForm";
 import { getPublicSurvey, submitSurveyResponse, trackSurveyView, type AnswerValue, type PublicSurveyState } from "@/lib/surveys";
-import { useI18nStore, useLang } from "@/lib/i18n";
+import { useLangMode, chromeLang, renderBilingual } from "@/lib/i18n";
 import { LangToggle } from "@/components/LangToggle";
+
+const EASE = [0.33, 1, 0.68, 1] as const; // --ease-out
 
 export default function SurveyRunner() {
   const { slug } = useParams();
-  const lang = useLang();
-  const setLang = useI18nStore((s) => s.setLang);
+  const mode = useLangMode();
+  const lang = chromeLang(mode);
   const [state, setState] = useState<PublicSurveyState | "loading" | "error">("loading");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const submitLock = useRef(false);
   const viewTracked = useRef(false);
   const startedAt = useRef<Date | null>(null);
+  const reduce = useReducedMotion();
 
   useEffect(() => {
     if (!slug) return;
@@ -41,7 +44,7 @@ export default function SurveyRunner() {
     submitLock.current = true;
     setSubmitting(true);
     try {
-      await submitSurveyResponse(state.survey.id, lang, answers, startedAt.current ?? undefined);
+      await submitSurveyResponse(state.survey.id, mode, answers, startedAt.current ?? undefined);
       setSubmitted(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't submit right now. Please check your connection and try again.");
@@ -53,8 +56,8 @@ export default function SurveyRunner() {
 
   if (state === "loading") {
     return (
-      <div className="min-h-dvh grid place-items-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="min-h-dvh grid place-items-center bg-canvas">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" strokeWidth={1.5} />
       </div>
     );
   }
@@ -72,7 +75,7 @@ export default function SurveyRunner() {
   }
 
   if (state.kind === "closed") {
-    const title = lang === "te" && state.survey.title_te ? state.survey.title_te : state.survey.title_en;
+    const title = renderBilingual(mode, state.survey.title_en, state.survey.title_te).primary;
     return (
       <StatusScreen icon={Lock} title="This survey is closed" body={`"${title}" is no longer accepting responses. Thank you for your interest.`} />
     );
@@ -80,18 +83,23 @@ export default function SurveyRunner() {
 
   if (submitted) {
     return (
-      <div className="min-h-dvh grid place-items-center bg-background px-6">
-        <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, ease: "easeOut" }} className="text-center max-w-sm">
+      <div className="min-h-dvh grid place-items-center bg-canvas px-6">
+        <motion.div
+          initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.38, ease: EASE }}
+          className="text-center max-w-sm"
+        >
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.1 }}
-            className="mx-auto h-16 w-16 rounded-full bg-success/15 grid place-items-center"
+            initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={reduce ? { duration: 0.38, ease: EASE } : { type: "spring", stiffness: 260, damping: 18, delay: 0.1 }}
+            className="mx-auto h-16 w-16 rounded-pill bg-success/15 grid place-items-center"
           >
-            <CheckCircle2 className="h-9 w-9 text-success" />
+            <CheckCircle2 className="h-7 w-7 text-success" strokeWidth={1.5} />
           </motion.div>
-          <h1 className="mt-5 text-2xl font-semibold tracking-tight">{lang === "te" ? "ధన్యవాదాలు!" : "Thank you!"}</h1>
-          <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+          <h1 className="mt-6 t-section">{lang === "te" ? "ధన్యవాదాలు!" : "Thank you!"}</h1>
+          <p className="mt-2 t-body text-muted-foreground">
             {lang === "te" ? "మీ సమాధానం విజయవంతంగా సమర్పించబడింది." : "Your response has been submitted successfully."}
           </p>
         </motion.div>
@@ -99,38 +107,37 @@ export default function SurveyRunner() {
     );
   }
 
-  return (
-    <SurveyForm
-      survey={state.survey}
-      questions={state.questions}
-      lang={lang}
-      onLangChange={setLang}
-      onSubmit={handleSubmit}
-      submitting={submitting}
-    />
-  );
+  return <SurveyForm survey={state.survey} questions={state.questions} onSubmit={handleSubmit} submitting={submitting} />;
 }
 
 function StatusScreen({ icon: Icon, title, body }: { icon: typeof SearchX; title: string; body: string }) {
+  const reduce = useReducedMotion();
   return (
-    <div className="min-h-dvh flex flex-col bg-background">
-      <header className="border-b border-border/60 bg-white/90">
-        <div className="mx-auto max-w-2xl px-4 sm:px-6 h-14 flex items-center gap-2.5">
-          <div className="h-7 w-7 rounded-lg brand-gradient grid place-items-center shrink-0">
-            <Shield className="h-4 w-4 text-primary-foreground" />
+    <div className="min-h-dvh flex flex-col bg-canvas">
+      <header className="border-b border-border bg-card/90">
+        <div className="mx-auto max-w-2xl px-4 sm:px-6 h-14 flex items-center gap-3">
+          <div className="h-7 w-7 rounded-control brand-gradient grid place-items-center shrink-0">
+            <Shield className="h-4 w-4 text-primary-foreground" strokeWidth={1.5} />
           </div>
-          <div className="text-xs font-semibold text-muted-foreground">AP Police Family Assessment Platform</div>
+          <div className="t-caption font-semibold text-muted-foreground">AP Police Family Assessment Platform</div>
           <div className="ml-auto"><LangToggle size="sm" /></div>
         </div>
       </header>
+
+      {/* Empty-state pattern: 64px accent-tint circle, monochrome icon, t-section + t-body */}
       <div className="flex-1 grid place-items-center px-6">
-        <div className="text-center max-w-sm">
-          <div className="mx-auto h-14 w-14 rounded-2xl bg-muted grid place-items-center">
-            <Icon className="h-6 w-6 text-muted-foreground" />
+        <motion.div
+          initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.38, ease: EASE }}
+          className="text-center max-w-sm"
+        >
+          <div className="mx-auto h-16 w-16 rounded-pill bg-accent-tint grid place-items-center">
+            <Icon className="h-7 w-7 text-primary" strokeWidth={1.5} />
           </div>
-          <h1 className="mt-4 text-xl font-semibold tracking-tight">{title}</h1>
-          <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{body}</p>
-        </div>
+          <h1 className="mt-6 t-section">{title}</h1>
+          <p className="mt-2 t-body text-muted-foreground">{body}</p>
+        </motion.div>
       </div>
     </div>
   );

@@ -2,130 +2,470 @@
 @tailwind components;
 @tailwind utilities;
 
-/* AP Police Family Assessment Platform
-   Official navy/indigo identity, clean white surfaces, Apple-quality precision. */
+/* ══════════════════════════════════════════════════════════════════════════
+   JEEVANA INSIGHT — DESIGN TOKENS · single source of truth
+   No hex / spacing / radius / shadow / size / easing lives anywhere but here.
+   Values below are the exact spec set; colors are stored as HSL channels so the
+   shadcn `hsl(var(--x))` plumbing and `/opacity` modifiers keep working.
+   ══════════════════════════════════════════════════════════════════════════ */
 
 @layer base {
   :root {
-    --background: 220 32% 98%;
-    --foreground: 224 42% 12%;
+    /* ── Spacing (the only allowed values) ─────────────────────────────── */
+    --space-1: 4px;   --space-2: 8px;   --space-3: 12px;  --space-4: 16px;
+    --space-6: 24px;  --space-8: 32px;  --space-12: 48px; --space-16: 64px; --space-24: 96px;
 
-    --surface: 0 0% 100%;
-    --surface-elevated: 220 32% 97%;
+    /* ── Radius family — tight & modern (Notion/Cred/Apple), pill 999 ──── */
+    --radius-control: 10px;   /* buttons, chips, small controls */
+    --radius-field:   12px;   /* inputs, selects, textareas */
+    --radius-surface: 16px;   /* cards, modals, sheets */
+    --radius-nav:     14px;   /* sidebar container only */
+    --radius-pill:    999px;  /* avatars, switches, status dots */
+    /* back-compat aliases (older class names map to the family above) */
+    --radius-button: var(--radius-control);
+    --radius-input:  var(--radius-field);
+    --radius-card:   var(--radius-surface);
+    --radius-modal:  var(--radius-surface);
+    --radius-sidebar: var(--radius-nav);
+    /* shadcn base — tuned so rounded-lg/md/sm land ON the family:
+       lg = 16 (surface) · md = 12 (field) · sm = 8 (micro control) */
+    --radius: 16px;
 
-    --card: 0 0% 100%;
-    --card-foreground: 224 42% 12%;
+    /* ── Color — warm, near-monochrome (hex noted; stored as HSL) ──────── */
+    --bg-canvas:     48 22% 95.5%;   /* #F6F5F1 warm paper */
+    --bg-surface:    0 0% 100%;      /* #FFFFFF */
+    --bg-sunken:     50 17% 93%;     /* #F0EFEA input wells */
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 224 42% 12%;
+    --text-primary:   240 3% 11%;    /* #1C1C1E — never pure black */
+    --text-secondary: 240 5% 38%;    /* #5C5C66 */
+    --text-tertiary:  240 5% 62%;    /* #9A9AA3 */
 
-    /* AP Police deep navy/indigo */
-    --primary: 226 64% 24%;
+    --border-subtle:  48 12% 90%;    /* rgba(28,28,30,.06) over canvas */
+    --border-strong:  45 11% 87%;    /* rgba(28,28,30,.10) over canvas */
+
+    --primary:        245 58% 51%;   /* #4338CA — the only saturated hue */
+    --primary-hover:  244 55% 41%;   /* #3730A3 */
+    --primary-active: 242 47% 34%;   /* #312E81 */
+    --primary-tint:   231 62% 96%;   /* #EEF0FB */
+
+    --accent-lavender: 246 50% 80%;  /* #B9B4E6 */
+    --accent-tint:     246 50% 96%;  /* #F1F0FA */
+
+    --focus-ring:     245 58% 51%;   /* used at /0.35 */
+
+    --success: 148 32% 36%;          /* #3F7A5B */
+    --warning: 38 50% 47%;           /* #B5883C */
+    --danger:  4 50% 47%;            /* #B4443C */
+    --brand-navy: 220 40% 25%;       /* #122A54 */
+
+    /* ── shadcn aliases → tokens (so every existing utility inherits) ──── */
+    --background: var(--bg-canvas);
+    --foreground: var(--text-primary);
+    --surface: var(--bg-surface);
+    --surface-elevated: var(--bg-surface);
+    --card: var(--bg-surface);
+    --card-foreground: var(--text-primary);
+    --popover: var(--bg-surface);
+    --popover-foreground: var(--text-primary);
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 226 64% 19%;
-    --primary-glow: 224 82% 62%;
-
-    --secondary: 222 24% 95%;
-    --secondary-foreground: 224 42% 12%;
-
-    --muted: 222 24% 95%;
-    --muted-foreground: 220 14% 46%;
-
-    --accent: 224 60% 95%;
-    --accent-foreground: 226 64% 24%;
-
-    --success: 152 55% 34%;
+    --primary-glow: var(--accent-lavender);
+    --secondary: var(--bg-sunken);
+    --secondary-foreground: var(--text-primary);
+    --muted: var(--bg-sunken);
+    --muted-foreground: var(--text-secondary);
+    --accent: var(--accent-tint);
+    --accent-foreground: var(--primary);
     --success-foreground: 0 0% 100%;
-
-    --warning: 38 88% 48%;
     --warning-foreground: 0 0% 100%;
-
-    --destructive: 4 68% 48%;
+    --destructive: var(--danger);
     --destructive-foreground: 0 0% 100%;
+    --border: var(--border-subtle);
+    --input: var(--border-strong);
+    --ring: var(--focus-ring);
 
-    --border: 220 18% 89%;
-    --input: 220 18% 89%;
-    --ring: 226 64% 24%;
+    /* ── Gradients — banned as decoration; only these controlled uses ──── */
+    --gradient-primary: hsl(var(--primary));                 /* flat brand fill */
+    --gradient-hero: hsl(var(--bg-canvas));                  /* flat warm canvas */
+    --gradient-glow: radial-gradient(60% 60% at 70% 30%, hsl(var(--accent-lavender) / 0.14) 0%, transparent 70%);
 
-    --radius: 1rem;
+    /* ── Elevation & light — illuminated, not shadowed ─────────────────── */
+    --highlight-top: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    --shadow-highlight: var(--highlight-top);
+    --shadow-xs: 0 1px 2px rgba(28, 28, 30, 0.04);
+    --shadow-sm: 0 1px 3px rgba(28, 28, 30, 0.05), 0 1px 2px rgba(28, 28, 30, 0.03);
+    --shadow-md: 0 4px 16px rgba(28, 28, 30, 0.06), 0 1px 4px rgba(28, 28, 30, 0.04);
+    --shadow-float: 0 12px 40px rgba(28, 28, 30, 0.08), 0 4px 12px rgba(28, 28, 30, 0.04);
+    --shadow-lg: var(--shadow-float);   /* back-compat alias */
 
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(226 64% 24%) 0%, hsl(224 70% 40%) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(224 55% 96%) 0%, hsl(0 0% 100%) 100%);
-    --gradient-subtle: linear-gradient(135deg, hsl(220 32% 99%) 0%, hsl(224 55% 96%) 100%);
+    /* ── Motion ────────────────────────────────────────────────────────── */
+    --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --dur-fast: 140ms;
+    --dur-base: 220ms;
+    --dur-slow: 380ms;
 
-    /* Shadows */
-    --shadow-sm: 0 1px 2px 0 hsl(226 64% 24% / 0.05);
-    --shadow-md: 0 4px 16px -2px hsl(226 64% 24% / 0.09);
-    --shadow-lg: 0 20px 40px -12px hsl(226 64% 24% / 0.16);
-    --shadow-glow: 0 0 40px hsl(224 82% 62% / 0.25);
-
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 224 42% 12%;
-    --sidebar-primary: 226 64% 24%;
+    /* ── Sidebar tokens ────────────────────────────────────────────────── */
+    --sidebar-background: var(--bg-surface);
+    --sidebar-foreground: var(--text-secondary);
+    --sidebar-primary: var(--primary);
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 224 60% 95%;
-    --sidebar-accent-foreground: 226 64% 24%;
-    --sidebar-border: 220 18% 91%;
-    --sidebar-ring: 226 64% 24%;
+    --sidebar-accent: var(--primary-tint);
+    --sidebar-accent-foreground: var(--primary);
+    --sidebar-border: var(--border-subtle);
+    --sidebar-ring: var(--focus-ring);
   }
 
   .dark {
-    --background: 224 42% 7%;
-    --foreground: 220 32% 97%;
-    --card: 224 38% 10%;
-    --card-foreground: 220 32% 97%;
-    --popover: 224 38% 10%;
-    --popover-foreground: 220 32% 97%;
-    --primary: 224 82% 68%;
-    --primary-foreground: 224 42% 10%;
-    --secondary: 224 28% 18%;
-    --secondary-foreground: 220 32% 97%;
-    --muted: 224 28% 18%;
-    --muted-foreground: 220 16% 66%;
-    --accent: 224 28% 18%;
-    --accent-foreground: 220 32% 97%;
-    --border: 224 28% 21%;
-    --input: 224 28% 21%;
-    --ring: 224 82% 68%;
+    --bg-canvas: 240 6% 8%;
+    --bg-surface: 240 6% 11%;
+    --bg-sunken: 240 6% 14%;
+    --text-primary: 240 12% 96%;
+    --text-secondary: 240 6% 68%;
+    --text-tertiary: 240 5% 50%;
+    --border-subtle: 240 8% 20%;
+    --border-strong: 240 8% 26%;
+    --primary: 245 70% 68%;
+    --primary-hover: 245 72% 74%;
+    --primary-active: 245 72% 80%;
+    --primary-tint: 245 30% 18%;
+    --accent-lavender: 246 45% 66%;
+    --accent-tint: 245 24% 18%;
+    --focus-ring: 245 70% 68%;
+    --success: 148 34% 52%;
+    --warning: 38 55% 60%;
+    --danger: 4 60% 62%;
+    --accent: var(--accent-tint);
+    --accent-foreground: 240 12% 96%;
+    --highlight-top: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --shadow-highlight: var(--highlight-top);
+    --sidebar-foreground: var(--text-secondary);
   }
 }
 
 @layer base {
-  * { @apply border-border; }
-  html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  * {
+    @apply border-border;
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+    scrollbar-gutter: stable;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
   body {
     @apply bg-background text-foreground;
+    font-optical-sizing: auto;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans Telugu", system-ui, sans-serif;
   }
-}
 
+        /* Telugu font optimizations - prevent text overflow, improve readability */
+        .font-telugu {
+          font-family: "Noto Sans Telugu", "Inter", system-ui, sans-serif;
+          line-height: 1.7;
+          letter-spacing: 0.01em;
+          word-break: break-word;
+          overflow-wrap: anywhere;
+        }
+  
+        /* Telugu-optimized textareas and inputs */
+        .telugu-input {
+          font-family: "Noto Sans Telugu", "Inter", system-ui, sans-serif;
+          line-height: 1.7;
+          letter-spacing: 0.01em;
+          word-break: break-word;
+          overflow-wrap: anywhere;
+        }
+
+        /* Editorial display serif for the rare hero moment */
+        .font-editorial {
+          font-family: "Fraunces", Georgia, "Iowan Old Style", ui-serif, serif;
+          font-optical-sizing: auto;
+          letter-spacing: -0.01em;
+        }
+
+        ::selection {
+          background: hsl(var(--primary) / 0.16);
+          color: hsl(var(--foreground));
+        }
+
+        /* One quiet scrollbar — 8px, pill thumb, border-strong */
+        * {
+          scrollbar-width: thin;
+          scrollbar-color: hsl(var(--border-strong)) transparent;
+        }
+        *::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        *::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        *::-webkit-scrollbar-thumb {
+          background: hsl(var(--border-strong));
+          border-radius: var(--radius-pill);
+          border: 2px solid transparent;
+          background-clip: padding-box;
+        }
+        *::-webkit-scrollbar-thumb:hover {
+          background: hsl(var(--text-tertiary));
+          background-clip: padding-box;
+        }
+      }
+
+      /* Touch targets - ensure 44px minimum on mobile */
+      @media (max-width: 767px) {
+        button:not([class*="size-"]),
+        [role="button"]:not([class*="size-"]),
+        a:not([class*="size-"]),
+        input[type="checkbox"],
+        input[type="radio"],
+        select:not([class*="size-"]),
+        .touch-target {
+          min-height: 44px;
+          min-width: 44px;
+        }
+      }
+
+      /* Mobile-first responsive utilities */
+      @layer utilities {
+        /* Container fluid spacing */
+        .container-fluid {
+          @apply px-4 sm:px-6 lg:px-8;
+        }
+  
+        /* Responsive grid layouts */
+        .grid-responsive {
+          @apply grid gap-4 sm:gap-6 lg:gap-8;
+        }
+  
+        .grid-cols-mobile {
+          @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+        }
+  
+        .grid-cols-tablet {
+          @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3;
+        }
+  
+        .grid-cols-desktop {
+          @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-4;
+        }
+  
+        /* Text responsive sizing using design tokens */
+        .text-responsive-display {
+          @apply t-display sm:t-hero lg:t-display;
+        }
+  
+        .text-responsive-hero {
+          @apply t-hero sm:t-title lg:t-hero;
+        }
+  
+        .text-responsive-title {
+          @apply t-title sm:t-section lg:t-title;
+        }
+  
+        .text-responsive-section {
+          @apply t-section sm:t-card lg:t-section;
+        }
+  
+        .text-responsive-body {
+          @apply t-body;
+        }
+  
+        /* Touch-friendly spacing */
+        .space-y-touch {
+          @apply space-y-4 sm:space-y-6;
+        }
+  
+        .space-x-touch {
+          @apply space-x-3 sm:space-x-4;
+        }
+  
+        /* Card responsive padding */
+        .card-padding {
+          @apply p-4 sm:p-5 lg:p-6;
+        }
+  
+        /* Mobile drawer width */
+        .drawer-mobile {
+          @apply w-full sm:w-[320px] lg:w-[360px] max-w-[90vw];
+        }
+  
+        /* Swipe hint indicator */
+        .swipe-hint {
+          @apply hidden lg:block;
+        }
+  
+        /* Hide on mobile, show on desktop */
+        .desktop-only {
+          @apply hidden lg:block;
+        }
+  
+        /* Show on mobile, hide on desktop */
+        .mobile-only {
+          @apply block lg:hidden;
+        }
+  
+        /* Responsive sidebar */
+        .sidebar-responsive {
+          @apply w-[64px] lg:w-[240px];
+        }
+  
+        /* Stack on mobile, inline on desktop */
+        .stack-mobile {
+          @apply flex-col sm:flex-row;
+        }
+  
+        /* Responsive card grid */
+        .card-grid {
+          @apply grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+        }
+  
+        /* Table responsive - collection view on mobile */
+        .table-responsive {
+          @apply overflow-x-auto;
+        }
+  
+        .table-collection {
+          @apply block lg:hidden;
+        }
+  
+        .table-desktop {
+          @apply hidden lg:table;
+        }
+  
+        /* iOS-style safe area */
+        .safe-area-inset {
+          padding-bottom: env(safe-area-inset-bottom);
+          padding-top: env(safe-area-inset-top);
+          padding-left: env(safe-area-inset-left);
+          padding-right: env(safe-area-inset-right);
+        }
+  
+        /* Input focus rings - iOS style */
+        .focus-ring-ios:focus-visible {
+          @apply outline-none ring-2 ring-primary/35 ring-offset-2 ring-offset-background;
+          transition: box-shadow var(--dur-fast) var(--ease-out);
+        }
+  
+        /* Skeleton shimmer responsive */
+        .skeleton-responsive {
+          @apply h-4 sm:h-5 lg:h-6;
+        }
+  
+        .text-balance { text-wrap: balance; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .thin-scrollbar { scrollbar-width: thin; scrollbar-color: hsl(var(--border-strong)) transparent; }
+        .thin-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+        .thin-scrollbar::-webkit-scrollbar-thumb { background: hsl(var(--border-strong)); border-radius: var(--radius-pill); }
+        .thin-scrollbar::-webkit-scrollbar-thumb:hover { background: hsl(var(--text-tertiary)); }
+        .animate-in-fade { animation: fade-in var(--dur-slow) var(--ease-out); }
+      }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TYPE SCALE + COMPONENT LANGUAGE
+   Typography is the hero. One rhythm, everywhere. Every value from tokens.
+   ══════════════════════════════════════════════════════════════════════════ */
 @layer components {
-  .glass-card {
-    @apply bg-white/70 backdrop-blur-xl border border-white/60;
-    box-shadow: var(--shadow-md);
+  .t-display { font-size: 56px; line-height: 1.05; letter-spacing: -0.03em;  font-weight: 600; }
+  .t-hero    { font-size: 40px; line-height: 1.08; letter-spacing: -0.025em; font-weight: 600; }
+  .t-title   { font-size: 28px; line-height: 1.18; letter-spacing: -0.02em;  font-weight: 600; }
+  .t-section { font-size: 20px; line-height: 1.30; letter-spacing: -0.015em; font-weight: 600; }
+  .t-card    { font-size: 16px; line-height: 1.40; letter-spacing: -0.005em; font-weight: 600; }
+  .t-body    { font-size: 15px; line-height: 1.60; }
+  .t-caption { font-size: 13px; line-height: 1.45; letter-spacing: 0.005em;  font-weight: 500; }
+  .eyebrow {
+    font-size: 12px; line-height: 1.40; letter-spacing: 0.08em;
+    text-transform: uppercase; font-weight: 600; color: hsl(var(--text-tertiary));
+  }
+
+  /* Brand fill — flat indigo, never a gradient */
+  .brand-gradient { background: var(--gradient-primary); }
+  .hero-gradient  { background: var(--gradient-hero); }
+  .glow-gradient  { background: var(--gradient-glow); }
+  .subtle-gradient { background: var(--gradient-hero); }
+
+  /* Card — a premium, illuminated object */
+  .card-premium {
+    border-radius: var(--radius-surface);
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border-subtle));
+    box-shadow: var(--highlight-top), var(--shadow-sm);
+    transition:
+      box-shadow var(--dur-slow) var(--ease-out),
+      transform var(--dur-slow) var(--ease-out),
+      border-color var(--dur-slow) var(--ease-out);
+  }
+  .card-premium-hover:hover {
+    box-shadow: var(--highlight-top), var(--shadow-md);
+    transform: translateY(-2px);
+    border-color: hsl(var(--primary) / 0.16);
   }
   .premium-card {
-    @apply bg-card rounded-2xl border border-border/70;
-    box-shadow: var(--shadow-md);
+    border-radius: var(--radius-surface);
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border-subtle));
+    box-shadow: var(--highlight-top), var(--shadow-sm);
   }
-  .hero-gradient { background: var(--gradient-hero); }
-  .subtle-gradient { background: var(--gradient-subtle); }
-  .brand-gradient { background: var(--gradient-primary); }
-}
+  .glass-card {
+    border-radius: var(--radius-surface);
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border-subtle));
+    box-shadow: var(--highlight-top), var(--shadow-md);
+  }
 
-@layer utilities {
-  .text-balance { text-wrap: balance; }
-  .animate-in-fade { animation: fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-  .animate-in-slide { animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+  .link-underline {
+    background-image: linear-gradient(hsl(var(--primary)), hsl(var(--primary)));
+    background-size: 0% 1.5px;
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    transition: background-size var(--dur-base) var(--ease-out);
+  }
+  .link-underline:hover { background-size: 100% 1.5px; }
+
+  /* Skeleton shimmer — functional motion, never a spinner */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--bg-sunken)) 0%,
+      hsl(var(--border-subtle)) 50%,
+      hsl(var(--bg-sunken)) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
+  }
 }
 
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes slide-up {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-12px); }
+}
+@layer utilities {
+  .animate-float { animation: float 4.5s ease-in-out infinite; }
+  .animate-float-slow { animation: float-slow 6s ease-in-out infinite; }
 }

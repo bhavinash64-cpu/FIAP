@@ -38,15 +38,15 @@ export function OverviewCards({ stats }: { stats: SurveyStats | null }) {
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
       {cards.map((c, i) => (
         <motion.div key={c.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-          className="rounded-2xl border border-border/70 bg-card shadow-sm hover:shadow-md transition-shadow p-4">
+          className="rounded-surface border border-border/70 bg-card shadow-sm hover:shadow-md transition-shadow p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <div className="text-[11px] sm:text-xs font-medium text-muted-foreground leading-tight">{c.label}</div>
-              <div className="mt-1.5 text-xl sm:text-2xl font-semibold tracking-tight tabular-nums truncate">
+              <div className="eyebrow">{c.label}</div>
+              <div className="mt-1.5 t-title font-semibold tracking-tight tabular-nums truncate">
                 {c.value === undefined ? <Skeleton className="h-6 w-14" /> : c.value}
               </div>
             </div>
-            <div className={`h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-xl grid place-items-center ${toneClass[c.tone]}`}>
+            <div className={`h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-control grid place-items-center ${toneClass[c.tone]}`}>
               <c.icon className="h-4 w-4" />
             </div>
           </div>

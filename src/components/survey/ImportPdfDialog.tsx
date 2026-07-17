@@ -147,7 +147,7 @@ export function ImportPdfDialog({
                   : "Asking AI to identify the questions…"}
               </div>
               {stage === "reading" && pageProgress.total > 0 && (
-                <div className="mt-4 mx-auto max-w-xs h-1.5 rounded-full bg-muted overflow-hidden">
+                <div className="mt-4 mx-auto max-w-xs h-1.5 rounded-pill bg-muted overflow-hidden">
                   <motion.div initial={false} animate={{ width: `${(pageProgress.page / pageProgress.total) * 100}%` }} className="h-full brand-gradient" />
                 </div>
               )}
@@ -186,13 +186,13 @@ export function ImportPdfDialog({
                         <div className="flex-1 min-w-0 space-y-2">
                           <div className="flex items-center gap-2 flex-wrap">
                             <Select value={d.kind} onValueChange={(v) => updateDraft(d.id, { kind: v as QuestionKind })}>
-                              <SelectTrigger className="h-7 w-auto rounded-md text-[11px] px-2 gap-1"><SelectValue /></SelectTrigger>
+                              <SelectTrigger className="h-7 w-auto rounded-field t-caption px-2 gap-1"><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 {QUESTION_KINDS.map((k) => <SelectItem key={k.value} value={k.value}>{k.label}</SelectItem>)}
                               </SelectContent>
                             </Select>
                             {d.duplicateOfPrompt && (
-                              <Badge variant="outline" className="text-[10px] border-warning/40 text-warning">
+                              <Badge variant="outline" className="t-caption border-warning/40 text-warning">
                                 Possible duplicate of "{truncate(d.duplicateOfPrompt, 40)}"
                               </Badge>
                             )}

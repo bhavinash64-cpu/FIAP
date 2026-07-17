@@ -10,7 +10,7 @@ const OPTIONS: { value: RangeKey; label: string }[] = [
 
 export function RangeSwitcher({ value, onChange }: { value: RangeKey; onChange: (v: RangeKey) => void }) {
   return (
-    <div role="tablist" aria-label="Time range" className="relative inline-flex items-center rounded-full border border-border/70 bg-white/70 backdrop-blur p-0.5 h-9">
+    <div role="tablist" aria-label="Time range" className="relative inline-flex items-center rounded-pill border border-border/70 bg-white/70 backdrop-blur p-0.5 h-9">
       {OPTIONS.map((o) => {
         const active = value === o.value;
         return (
@@ -20,12 +20,12 @@ export function RangeSwitcher({ value, onChange }: { value: RangeKey; onChange: 
             aria-selected={active}
             onClick={() => onChange(o.value)}
             className={cn(
-              "relative z-10 rounded-full px-3 h-8 text-xs font-semibold transition-colors whitespace-nowrap",
+              "relative z-10 rounded-pill px-3 h-8 text-xs font-semibold transition-colors whitespace-nowrap",
               active ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground",
             )}
           >
             {active && (
-              <motion.span layoutId="range-pill" className="absolute inset-0 -z-10 rounded-full brand-gradient shadow-sm" transition={{ type: "spring", stiffness: 420, damping: 32 }} />
+              <motion.span layoutId="range-pill" className="absolute inset-0 -z-10 rounded-pill brand-gradient shadow-sm" transition={{ type: "spring", stiffness: 420, damping: 32 }} />
             )}
             {o.label}
           </button>

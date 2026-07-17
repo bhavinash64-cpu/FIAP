@@ -28,7 +28,7 @@ export function OriginBadge({ origin }: { origin: QuestionOrigin }) {
   if (!visible) return null;
   const c = CONFIG[origin];
   return (
-    <Badge variant="secondary" className={`text-[10px] gap-1 border-transparent ${c.className}`}>
+    <Badge variant="secondary" className={`t-caption gap-1 border-transparent ${c.className}`}>
       <c.icon className="h-2.5 w-2.5" /> {c.label}
     </Badge>
   );

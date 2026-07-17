@@ -27,3 +27,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# local junk
+nul
+.claude/
+test-pdf-parse*
+test-pdfjs.mjs
+extracted-text/
+extracted-questions.json

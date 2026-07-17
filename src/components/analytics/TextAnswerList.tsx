@@ -43,16 +43,16 @@ export function TextAnswerList({ questionId }: { questionId: string }) {
       ) : (
         <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
           {rows.map((r) => (
-            <div key={r.id} className="rounded-xl bg-muted/40 border border-border/50 p-3 text-sm">
+            <div key={r.id} className="rounded-surface border border-border/50 bg-muted/40 p-3 t-body">
               <div className="whitespace-pre-wrap leading-relaxed">{r.value}</div>
-              {r.submittedAt && <div className="mt-1.5 text-[11px] text-muted-foreground">{new Date(r.submittedAt).toLocaleString()}</div>}
+              {r.submittedAt && <div className="mt-1.5 t-caption text-muted-foreground">{new Date(r.submittedAt).toLocaleString()}</div>}
             </div>
           ))}
         </div>
       )}
 
       {total > PAGE_SIZE && (
-        <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+        <div className="flex items-center justify-between t-caption text-muted-foreground pt-1">
           <span>{page * PAGE_SIZE + 1}–{Math.min(total, (page + 1) * PAGE_SIZE)} of {total}</span>
           <div className="flex gap-1">
             <Button size="icon" variant="ghost" className="h-7 w-7" disabled={page === 0} onClick={() => setPage((p) => p - 1)}><ChevronLeft className="h-3.5 w-3.5" /></Button>
