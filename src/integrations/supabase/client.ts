@@ -2,14 +2,20 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// The URL and the *publishable* key are public by design — they ship in the
+// browser bundle no matter what, and access is governed by row-level security,
+// not by hiding them. So they are safe, and necessary, as fallback defaults:
+// without them a host that has not set the VITE_* env vars (e.g. a fresh Vercel
+// project) crashes on boot with "supabaseUrl is required" and renders a blank
+// page. Env vars still take precedence, so staging/other projects can override.
+// A secret/service-role key must NEVER appear here — the guard below enforces it.
+const FALLBACK_SUPABASE_URL = "https://atlekmwlqweqxrfbvwie.supabase.co";
+const FALLBACK_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_QQMGneV47qP0ekjdYTGM4w_BmKgBg3a";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || FALLBACK_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || FALLBACK_SUPABASE_PUBLISHABLE_KEY;
 
 function requirePublicSupabaseConfig() {
-  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-    throw new Error("Missing Supabase browser configuration. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.");
-  }
-
   if (SUPABASE_PUBLISHABLE_KEY.startsWith("sb_secret_") || SUPABASE_PUBLISHABLE_KEY.includes("service_role")) {
     throw new Error("Refusing to initialize Supabase with a secret/service role key in the browser.");
   }
