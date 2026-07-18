@@ -54,31 +54,34 @@ export function SurveyShareCard({ survey, mode }: { survey: Survey; mode: LangMo
   return (
     <>
       <div className="rounded-surface border border-border/70 bg-card p-5 sm:p-6">
-        <div className="flex flex-col gap-6 sm:flex-row">
-          <div className="shrink-0">
-            <div className="grid place-items-center rounded-surface border border-border/70 bg-white p-3">
-              <QRCodeSVG value={url} size={148} level="M" bgColor="transparent" fgColor={QR_SCREEN_FG} />
+        <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start sm:gap-8">
+          {/* QR is the hero — large, framed, with a scan caption. */}
+          <div className="shrink-0 text-center">
+            <div className="grid place-items-center rounded-surface border border-border/70 bg-white p-4 shadow-sm">
+              <QRCodeSVG value={url} size={196} level="M" bgColor="transparent" fgColor={QR_SCREEN_FG} />
             </div>
+            <p className="mt-2.5 t-caption font-medium text-muted-foreground">{t("scanToOpen")}</p>
             {/* Rendered off-screen at print resolution purely as the source for
-                the PNG download — the 148px display copy would pixelate on a
-                poster. */}
+                the PNG download — the display copy would pixelate on a poster. */}
             <div ref={qrRef} className="sr-only" aria-hidden>
               <QRCodeCanvas value={url} size={1024} level="M" marginSize={2} bgColor="#FFFFFF" fgColor={QR_PRINT_FG} />
             </div>
           </div>
 
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 self-stretch">
             <div className="eyebrow">{t("surveyLink")}</div>
             <div className="mt-1.5 break-all rounded-field border border-border/60 bg-muted/60 px-3 py-2.5 font-mono text-xs sm:text-sm">
               {url}
             </div>
 
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button size="sm" onClick={copy}>
+            {/* One consistent button size everywhere on the card, laid out on a
+                grid so every action is the same width — no scattered pills. */}
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Button onClick={copy} className="w-full">
                 {copied ? <Check strokeWidth={1.8} /> : <Copy strokeWidth={1.8} />}
                 {copied ? t("copied") : t("copyLink")}
               </Button>
-              <Button size="sm" variant="outline" asChild>
+              <Button variant="outline" asChild className="w-full">
                 <a href={url} target="_blank" rel="noreferrer">
                   <ExternalLink strokeWidth={1.8} />
                   {t("open")}
@@ -87,27 +90,27 @@ export function SurveyShareCard({ survey, mode }: { survey: Survey; mode: LangMo
             </div>
 
             <div className="mt-5 eyebrow">{t("shareVia")}</div>
-            <div className="mt-1.5 flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" asChild>
+            <div className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <Button variant="outline" asChild className="w-full">
                 <a href={whatsappHref(message)} target="_blank" rel="noreferrer">
                   <MessageCircle strokeWidth={1.8} />
                   {t("shareWhatsApp")}
                 </a>
               </Button>
-              <Button size="sm" variant="outline" asChild>
+              <Button variant="outline" asChild className="w-full">
                 <a href={smsHref(message)}>
                   <Smartphone strokeWidth={1.8} />
                   {t("shareSms")}
                 </a>
               </Button>
-              <Button size="sm" variant="outline" asChild>
+              <Button variant="outline" asChild className="w-full">
                 <a href={mailtoHref(title, message)}>
                   <Mail strokeWidth={1.8} />
                   {t("shareEmail")}
                 </a>
               </Button>
               {canNativeShare() && (
-                <Button size="sm" variant="outline" onClick={() => void nativeShare(title, t("shareMessage"), url)}>
+                <Button variant="outline" onClick={() => void nativeShare(title, t("shareMessage"), url)} className="w-full">
                   <Share2 strokeWidth={1.8} />
                   {t("shareSurvey")}
                 </Button>
@@ -115,10 +118,10 @@ export function SurveyShareCard({ survey, mode }: { survey: Survey; mode: LangMo
             </div>
 
             <div className="mt-5 eyebrow">QR</div>
-            <div className="mt-1.5 flex flex-wrap gap-2">
+            <div className="mt-1.5 grid grid-cols-2 gap-2">
               <Button
-                size="sm"
                 variant="outline"
+                className="w-full"
                 onClick={() => {
                   if (!downloadQrPng(qrRef.current, qrFileName(survey.title_en, survey.slug!))) {
                     toast.error(t("somethingWrongTitle"));
@@ -128,7 +131,7 @@ export function SurveyShareCard({ survey, mode }: { survey: Survey; mode: LangMo
                 <Download strokeWidth={1.8} />
                 {t("downloadQr")}
               </Button>
-              <Button size="sm" variant="outline" onClick={printSheetOnly}>
+              <Button variant="outline" onClick={printSheetOnly} className="w-full">
                 <Printer strokeWidth={1.8} />
                 {t("printQr")}
               </Button>

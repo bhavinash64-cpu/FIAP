@@ -53,7 +53,7 @@
 
     --focus-ring:     245 58% 51%;   /* used at /0.35 */
 
-    --success: 148 32% 36%;          /* #3F7A5B */
+    --success: 148 33% 33%;          /* darkened so success text on the /0.12 tint clears WCAG AA 4.5:1 */
     --warning: 38 50% 47%;           /* #B5883C */
     --danger:  4 50% 47%;            /* #B4443C */
     --brand-navy: 220 40% 25%;       /* #122A54 */
@@ -569,6 +569,21 @@
   from { background-position: 200% 0; }
   to   { background-position: -200% 0; }
 }
+/* Auth illustration — gentle, calm motion. Amplitude is a per-element var so
+   one keyframe drives every floating card at a different height/rhythm. The
+   global prefers-reduced-motion rule (top of this file) freezes all of these. */
+@keyframes authFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(calc(var(--amp, 12px) * -1)); }
+}
+@keyframes authOrbit {
+  to { transform: rotate(360deg); }
+}
+@keyframes authAmbient {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 0.9; }
+}
+
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-8px); }

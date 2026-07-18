@@ -1,31 +1,26 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useReducedMotion, type Variants } from "framer-motion";
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, AlertCircle, UserRound } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, AlertCircle } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LangToggle } from "@/components/LangToggle";
-import { BrandMark } from "@/components/BrandMark";
+import { Logo } from "@/components/Logo";
+import { AuthIllustration } from "@/components/auth/AuthIllustration";
 import { toast } from "sonner";
-// Responsive WebP set + a PNG fallback, all generated from the 1.4MB source by
-// `node scripts/optimize-images.mjs`. The source is a soft flat-shaded render,
-// so it survives WebP at 5–17KB — a phone was previously downloading the full
-// 1.4MB PNG for an illustration that `hidden lg:flex` never even showed it.
-import authWebp640 from "@/assets/auth-illustration-640.webp";
-import authWebp1024 from "@/assets/auth-illustration-1024.webp";
-import authWebp1536 from "@/assets/auth-illustration-1536.webp";
-import authFallback from "@/assets/auth-illustration-fallback.png";
 
 /* ────────────────────────────────────────────────────────────────────────
    Jeevana Insight — Sign in
-   The quietest, most crafted surface in the product. A calm editorial left,
-   a single luminous login card on the right. Every value comes from tokens.
+   The quietest, most crafted surface in the product. A calm editorial left
+   with a handcrafted floating sculpture, a single luminous login card on the
+   right. Bespoke premium values (spacing 4/8/12/16/24/32/48; radii up to 36;
+   one purple palette; one soft shadow language).
    ──────────────────────────────────────────────────────────────────────── */
 
-const EASE = [0.33, 1, 0.68, 1] as const; // --ease-out
+const EASE = [0.33, 1, 0.68, 1] as const;
 const emailSchema = z.string().trim().email();
 
 function describeAuthError(message: string): string {
@@ -81,52 +76,40 @@ export default function Auth() {
   };
 
   return (
-    <div className="relative min-h-dvh overflow-hidden bg-canvas text-foreground">
-      {/* Almost-invisible grain so the warm white never reads flat */}
+    <div className="relative min-h-dvh bg-[#FAFAFD] text-foreground">
+      {/* The card is vertically centred in the viewport. min-h-dvh (not a hard
+          h-dvh clip) means that on a short or zoomed screen the page scrolls
+          just enough to keep the whole card reachable, instead of cutting the
+          Continue button off — so the cards are always centred AND complete. */}
+      {/* Almost-invisible grain so the cool white never reads flat */}
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 z-0 opacity-[0.025] mix-blend-soft-light"
+        className="pointer-events-none fixed inset-0 z-0 opacity-[0.02] mix-blend-soft-light"
         style={{
           backgroundImage:
             "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
         }}
       />
 
-      {/* Floating language switcher — minimal, top-right. Sits above the mobile
-          banner, so it needs the banner's own stacking context to stay tappable. */}
+      {/* Floating language switcher — minimal, top-right. */}
       <div className="absolute right-4 top-4 z-30 sm:right-8 sm:top-8">
         <LangToggle />
       </div>
 
-      <div className="relative z-10 grid min-h-dvh lg:grid-cols-[2.9fr_minmax(460px,1.1fr)]">
-        {/* ══ LEFT on desktop · a banner ABOVE the form on mobile ════════════
-            One element, two treatments: a fixed-height illustrated banner on
-            phones and the full editorial panel from 1024px. The alternative —
-            a second mobile-only <img> — would ship duplicate DOM and a second
-            download for the same artwork. */}
-        <aside className="relative flex h-40 flex-col justify-between overflow-hidden border-b border-border bg-canvas xs:h-48 sm:h-60 lg:h-auto lg:border-b-0 lg:border-r lg:p-12 xl:p-16">
-          {/* Illustration — fills the entire panel, edge to edge */}
-          <picture>
-            <source
-              type="image/webp"
-              srcSet={`${authWebp640} 640w, ${authWebp1024} 1024w, ${authWebp1536} 1536w`}
-              sizes="(min-width: 1024px) 66vw, 100vw"
-            />
-            <img
-              src={authFallback}
-              alt=""
-              aria-hidden
-              draggable={false}
-              width={1536}
-              height={1024}
-              decoding="async"
-              className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover object-center"
-            />
-          </picture>
-          {/* Legibility scrim — keeps the headline crisp over the artwork */}
-          <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-b from-canvas/80 via-canvas/10 to-canvas/45" />
+      <div className="relative z-10 grid min-h-dvh grid-cols-1 lg:grid-cols-[2.9fr_minmax(460px,1.1fr)]">
+        {/* ══ LEFT · editorial panel + floating sculpture — desktop only ══ */}
+        <aside className="relative hidden overflow-hidden bg-[#FAFAFD] lg:flex lg:h-dvh lg:flex-col lg:border-r lg:border-[rgba(94,67,243,0.08)] lg:p-12 xl:p-16">
+          {/* Ambient purple wash — the warm light the whole panel sits in */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(120% 80% at 18% 0%, rgba(237,233,254,0.9) 0%, rgba(250,250,253,0) 55%), radial-gradient(90% 90% at 85% 100%, rgba(167,139,250,0.12) 0%, rgba(250,250,253,0) 60%)",
+            }}
+          />
 
-          {/* Top group — brand + editorial headline, over the artwork */}
+          {/* Brand + editorial headline (top) */}
           <div className="relative z-10 p-5 sm:p-6 lg:p-0">
             <motion.div
               initial={reduce ? { opacity: 0 } : { opacity: 0, y: -10 }}
@@ -134,41 +117,52 @@ export default function Auth() {
               transition={{ duration: 0.6, ease: EASE }}
               className="flex items-center gap-3"
             >
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-control bg-surface shadow-sm ring-1 ring-border">
-                <BrandMark className="h-6 w-6" />
-              </span>
+              <Logo size={44} radius={14} />
               <div className="min-w-0 leading-tight">
                 <span className="block truncate t-body font-semibold tracking-tight">Jeevana Insight</span>
                 <span className="block truncate t-caption text-muted-foreground">Family Assessment Platform</span>
               </div>
             </motion.div>
 
-            {/* The editorial headline is a desktop luxury — on a 160px banner it
-                would fight the artwork and shove the form below the fold. */}
-            <motion.div initial="hidden" animate="show" variants={container} className="mt-10 hidden max-w-[30rem] lg:block">
-              <motion.p variants={item} className="eyebrow text-primary">
+            <motion.div initial="hidden" animate="show" variants={container} className="mt-12 hidden max-w-[30rem] lg:block">
+              <motion.p variants={item} className="eyebrow" style={{ color: "#5E43F3" }}>
                 Private workspace
               </motion.p>
-              <motion.h1 variants={item} className="font-editorial t-hero mt-6 font-normal">
+              <motion.h1 variants={item} className="font-editorial t-hero mt-6 font-normal leading-[1.08]">
                 Every response
                 <br />
-                tells <span className="italic text-primary">a story.</span>
+                tells <span className="italic" style={{ color: "#5E43F3" }}>a story.</span>
               </motion.h1>
-              <motion.p variants={item} className="mt-6 max-w-[26rem] t-body text-foreground/70">
+              <motion.p variants={item} className="mt-6 max-w-[26rem] t-body text-foreground/65">
                 A secure, intelligent platform to create, publish and analyse family
                 assessment surveys. Your data stays private. Your insights create impact.
               </motion.p>
             </motion.div>
           </div>
 
-          {/* Trust line */}
+          {/* The handcrafted floating sculpture — desktop only, centred in the
+              remaining space. Scaled to fit narrower desktops without cropping. */}
+          {/* min-h-0 + overflow-hidden lets this decorative area shrink and clip
+              instead of forcing the grid row taller than the locked viewport. */}
+          <div className="relative z-0 hidden min-h-0 flex-1 place-items-center overflow-hidden lg:grid">
+            <motion.div
+              initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 1.1, ease: EASE, delay: 0.2 }}
+              className="origin-center scale-[0.62] xl:scale-[0.8] 2xl:scale-[0.92]"
+            >
+              <AuthIllustration />
+            </motion.div>
+          </div>
+
+          {/* Trust line (bottom) */}
           <motion.div
             initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: EASE, delay: 0.5 }}
             className="relative z-10 hidden items-center gap-2 t-caption text-muted-foreground lg:flex"
           >
-            <span className="inline-flex h-1.5 w-1.5 rounded-pill bg-primary/60" />
+            <span className="inline-flex h-1.5 w-1.5 rounded-pill" style={{ background: "rgba(94,67,243,0.6)" }} />
             Private
             <span className="text-border-strong">·</span>
             Secure
@@ -179,44 +173,51 @@ export default function Auth() {
         </aside>
 
         {/* ══ RIGHT · the sign-in card ═══════════════════════════════════════ */}
-        <main className="relative flex items-start justify-center px-4 py-8 sm:px-6 sm:py-12 lg:items-center lg:py-16">
+        <main className="relative flex min-h-dvh flex-col items-center justify-center px-4 py-8 sm:px-6">
           <motion.div
             initial={reduce ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.99 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.7, ease: EASE, delay: 0.1 }}
-            className="w-full max-w-[24rem]"
+            className="w-full max-w-[420px]"
           >
-            {/* The card — a premium, illuminated white surface (the anchor).
-                Flush to the 16px gutter at 320px; the old fixed p-6 left just
-                224px of usable field width there. */}
-            <div className="relative rounded-surface border border-border bg-card p-5 shadow-[var(--highlight-top),var(--shadow-float)] xs:p-6">
+            {/* Compact brand — mobile/tablet only, since the banner is gone there. */}
+            <div className="mb-4 flex items-center justify-center gap-2.5 sm:mb-6 lg:hidden">
+              <Logo size={40} radius={13} />
+              <span className="leading-tight">
+                <span className="block t-caption font-semibold tracking-tight">Jeevana Insight</span>
+                <span className="block text-[11px] text-muted-foreground">Family Assessment Platform</span>
+              </span>
+            </div>
+
+            {/* A premium macOS-style panel: soft white, a whisper of a purple
+                edge, one big soft cast, and a bright inner top highlight. */}
+            <div className="relative rounded-[28px] border border-[rgba(94,67,243,0.07)] bg-[rgba(255,255,255,0.94)] p-6 backdrop-blur-[30px] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_50px_140px_rgba(95,70,255,0.10),0_2px_10px_rgba(46,42,69,0.04)] sm:rounded-[32px] sm:p-8 lg:rounded-[36px] lg:p-12">
               <div className="flex flex-col items-center text-center">
-                <span className="grid h-14 w-14 place-items-center rounded-pill bg-accent-tint text-primary ring-1 ring-primary/10">
-                  <UserRound className="h-6 w-6" strokeWidth={1.5} />
-                </span>
-                <h2 className="t-section mt-4 sm:mt-6">Welcome back</h2>
-                <p className="mt-2 t-caption text-muted-foreground">
-                  Sign in to continue to your secure workspace
-                </p>
+                <Logo size={52} radius={16} />
+                <h2 className="t-title mt-6 font-semibold tracking-tight">Welcome back</h2>
+                <p className="mt-2 t-caption text-muted-foreground">Sign in to continue to your secure workspace</p>
               </div>
 
               {error && (
                 <div
                   role="alert"
-                  className="mt-5 flex items-start gap-2 rounded-field border border-danger/25 bg-[hsl(var(--danger)/0.06)] p-3.5 t-caption leading-relaxed text-danger sm:mt-6 sm:p-4"
+                  className="mt-6 flex items-start gap-2 rounded-[16px] border border-danger/25 bg-[hsl(var(--danger)/0.06)] p-4 t-caption leading-relaxed text-danger"
                 >
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                   <div className="min-w-0 break-words">{error}</div>
                 </div>
               )}
 
-              <form onSubmit={signIn} className="mt-6 space-y-4 sm:mt-8" noValidate>
-                <div className="space-y-2">
-                  <Label htmlFor="si-email" className="t-caption font-medium text-foreground/80">
+              <form onSubmit={signIn} className="mt-6 space-y-5 sm:space-y-6" noValidate>
+                <div className="space-y-3">
+                  <Label htmlFor="si-email" className="t-caption font-medium text-foreground/70">
                     Email address
                   </Label>
                   <div className="group relative">
-                    <Mail aria-hidden className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-tertiary transition-colors group-focus-within:text-primary" />
+                    <Mail
+                      aria-hidden
+                      className="pointer-events-none absolute left-5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-tertiary transition-colors group-focus-within:text-[#6E5BFF]"
+                    />
                     <Input
                       id="si-email"
                       name="email"
@@ -226,17 +227,20 @@ export default function Auth() {
                       placeholder="admin@example.com"
                       required
                       aria-invalid={!!error}
-                      className="h-12 pl-11"
+                      className="h-[60px] rounded-[18px] border-[rgba(80,80,120,0.10)] bg-white pl-12 hover:border-[rgba(80,80,120,0.18)] focus-visible:border-[#6E5BFF] focus-visible:bg-white focus-visible:ring-[6px] focus-visible:ring-[rgba(110,91,255,0.10)]"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="si-password" className="t-caption font-medium text-foreground/80">
+                <div className="space-y-3">
+                  <Label htmlFor="si-password" className="t-caption font-medium text-foreground/70">
                     Password
                   </Label>
                   <div className="group relative">
-                    <Lock aria-hidden className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-tertiary transition-colors group-focus-within:text-primary" />
+                    <Lock
+                      aria-hidden
+                      className="pointer-events-none absolute left-5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-tertiary transition-colors group-focus-within:text-[#6E5BFF]"
+                    />
                     <Input
                       id="si-password"
                       name="password"
@@ -245,17 +249,14 @@ export default function Auth() {
                       placeholder="Enter your password"
                       required
                       aria-invalid={!!error}
-                      className="h-12 pl-11 pr-11"
+                      className="h-[60px] rounded-[18px] border-[rgba(80,80,120,0.10)] bg-white pl-12 pr-12 hover:border-[rgba(80,80,120,0.18)] focus-visible:border-[#6E5BFF] focus-visible:bg-white focus-visible:ring-[6px] focus-visible:ring-[rgba(110,91,255,0.10)]"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPw((v) => !v)}
                       aria-label={showPw ? "Hide password" : "Show password"}
                       aria-pressed={showPw}
-                      // touch-halo rather than a bigger box: nothing sits beside
-                      // it to steal taps from, and growing it would crowd the
-                      // field's right padding on desktop.
-                      className="touch-halo absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-pill text-tertiary transition-colors hover:bg-sunken hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[hsl(var(--focus-ring)/0.35)]"
+                      className="touch-halo absolute right-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-pill text-tertiary transition-colors hover:bg-[rgba(94,67,243,0.06)] hover:text-[#6E5BFF] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[rgba(110,91,255,0.20)]"
                     >
                       {showPw ? <EyeOff className="h-[17px] w-[17px]" /> : <Eye className="h-[17px] w-[17px]" />}
                     </button>
@@ -265,7 +266,8 @@ export default function Auth() {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="group h-12 w-full shadow-[var(--highlight-top),var(--shadow-md)] transition-[transform,box-shadow,background-color] duration-base ease-out hover:-translate-y-px hover:shadow-[var(--highlight-top),var(--shadow-float)] active:translate-y-0"
+                  className="group h-[58px] w-full rounded-[18px] border-0 text-white shadow-[0_20px_60px_rgba(94,67,243,0.30)] transition-[transform,box-shadow] duration-[250ms] ease-out hover:scale-[1.015] hover:shadow-[0_24px_70px_rgba(94,67,243,0.34)] active:scale-100"
+                  style={{ background: "linear-gradient(180deg, #7B61FF, #5E43F3)" }}
                 >
                   {loading ? (
                     <Loader2 className="h-[18px] w-[18px] animate-spin" />

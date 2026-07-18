@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { LayoutTemplate, Loader2, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -23,6 +23,7 @@ export default function Templates() {
   const t = useT();
   const mode = useLangMode();
   const nav = useNavigate();
+  const qc = useQueryClient();
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const { data: instruments, isLoading } = useQuery({ queryKey: ["question-bank"], queryFn: listBank });
@@ -42,6 +43,7 @@ export default function Templates() {
         description_te: inst.blurb_te ?? undefined,
       });
       await importInstrumentsToSurvey(surveyId, [inst.id]);
+      qc.invalidateQueries({ queryKey: ["surveys"] });
       toast.success(`Created “${inst.name_en}” with ${inst.items.length} questions`);
       nav(`/app/surveys/${surveyId}/edit`);
     } catch (e) {

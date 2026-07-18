@@ -99,8 +99,8 @@ export default function QrManager() {
 
           {selected ? (
             <div className="min-w-0 space-y-6">
-              <ReachStats survey={selected} />
               <SurveyShareCard key={selected.id} survey={selected} mode={mode} />
+              <ReachStats survey={selected} />
             </div>
           ) : (
             <div className="grid place-items-center rounded-surface border border-dashed border-border p-12 text-center t-body text-muted-foreground">
@@ -131,7 +131,7 @@ function ReachStats({ survey }: { survey: SurveyWithCounts }) {
   ];
 
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {tiles.map((tile) => (
         <div key={tile.label} className="rounded-surface border border-border/70 bg-card p-4">
           <span className="grid h-9 w-9 place-items-center rounded-control bg-accent-tint text-primary">
@@ -141,7 +141,7 @@ function ReachStats({ survey }: { survey: SurveyWithCounts }) {
           <div className="mt-1.5 t-caption text-muted-foreground">{tile.label}</div>
         </div>
       ))}
-      <div className="col-span-3">
+      <div className="col-span-2 sm:col-span-3">
         <Button asChild variant="outline" size="sm">
           <Link to={`/app/surveys/${survey.id}/analytics`}>
             <BarChart3 strokeWidth={1.6} />

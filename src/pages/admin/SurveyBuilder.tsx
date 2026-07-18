@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useShallow } from "zustand/react/shallow";
 import {
   AlertCircle,
@@ -101,6 +102,7 @@ function SurveyMeta() {
 export default function SurveyBuilder() {
   const { id } = useParams();
   const nav = useNavigate();
+  const qc = useQueryClient();
   const mode = useLangMode();
 
   const loading = useBuilderStore((s) => s.loading);
@@ -145,27 +147,30 @@ export default function SurveyBuilder() {
       await flushAutosave();
       const slug = await publishSurvey(survey.id);
       setSurveyStatus({ status: "published", slug, published_at: new Date().toISOString() });
+      qc.invalidateQueries({ queryKey: ["surveys"] });
       toast.success("Survey published");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not publish");
     } finally {
       setPublishing(false);
     }
-  }, [survey, total, setSurveyStatus]);
+  }, [survey, total, setSurveyStatus, qc]);
 
   const handleClose = useCallback(async () => {
     if (!survey) return;
     await closeSurvey(survey.id);
     setSurveyStatus({ status: "closed" });
+    qc.invalidateQueries({ queryKey: ["surveys"] });
     toast.success("Survey closed to new responses");
-  }, [survey, setSurveyStatus]);
+  }, [survey, setSurveyStatus, qc]);
 
   const handleReopen = useCallback(async () => {
     if (!survey) return;
     await reopenSurvey(survey.id);
     setSurveyStatus({ status: "published" });
+    qc.invalidateQueries({ queryKey: ["surveys"] });
     toast.success("Survey reopened");
-  }, [survey, setSurveyStatus]);
+  }, [survey, setSurveyStatus, qc]);
 
   if (loading || !survey) {
     return (

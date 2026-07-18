@@ -5,6 +5,10 @@ export default {
   darkMode: ["class"],
   content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   prefix: "",
+  // Compile every `hover:` utility inside @media (hover: hover) so hover styles
+  // never "stick" after a tap on touch devices — a lifted card or slid arrow
+  // would otherwise stay transformed until the next tap.
+  future: { hoverOnlyWhenSupported: true },
   theme: {
     container: {
       center: true,

@@ -24,6 +24,7 @@ const QuestionBank = lazy(() => import("./pages/admin/QuestionBank"));
 const Templates = lazy(() => import("./pages/admin/Templates"));
 const QrManager = lazy(() => import("./pages/admin/QrManager"));
 const Responses = lazy(() => import("./pages/admin/Responses"));
+const ResponseExplorer = lazy(() => import("./pages/admin/ResponseExplorer"));
 const AnalyticsHome = lazy(() => import("./pages/admin/AnalyticsHome"));
 const ExportCenter = lazy(() => import("./pages/admin/ExportCenter"));
 const Notifications = lazy(() => import("./pages/admin/Notifications"));
@@ -92,9 +93,13 @@ function AppRoutes() {
               for the same page — redirected so older bookmarks keep working. */}
           <Route path="question-bank" element={<QuestionBank />} />
           <Route path="masters" element={<Navigate to="/app/question-bank" replace />} />
+          {/* Templates was replaced by Response Explorer in the sidebar; the
+              route stays so the dashboard's "From template" quick action and any
+              saved links keep working. */}
           <Route path="templates" element={<Templates />} />
           <Route path="qr" element={<QrManager />} />
           <Route path="responses" element={<Responses />} />
+          <Route path="response-explorer" element={<ResponseExplorer />} />
           <Route path="analytics" element={<AnalyticsHome />} />
           <Route path="reports" element={<Reports />} />
           <Route path="export" element={<ExportCenter />} />

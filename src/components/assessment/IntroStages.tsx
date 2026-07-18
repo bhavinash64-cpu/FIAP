@@ -11,10 +11,10 @@ import {
   Check,
   ArrowRight,
   ArrowLeft,
-  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AssessmentShell } from "@/components/assessment/AssessmentShell";
+import { Logo } from "@/components/Logo";
 import { renderBilingual, useT, type LangMode } from "@/lib/i18n";
 import type { Survey } from "@/lib/surveys";
 import { cn } from "@/lib/utils";
@@ -76,9 +76,7 @@ export function WelcomeStage({
   return (
     <AssessmentShell>
       <Reveal>
-        <div className="brand-gradient mx-auto grid h-14 w-14 place-items-center rounded-surface">
-          <Shield className="h-7 w-7 text-primary-foreground" strokeWidth={1.6} />
-        </div>
+        <Logo size={56} className="mx-auto" />
       </Reveal>
 
       <Reveal delay={0.06}>

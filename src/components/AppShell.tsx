@@ -5,9 +5,9 @@ import {
   LayoutGrid,
   ClipboardList,
   Library,
-  LayoutTemplate,
   QrCode,
   Inbox,
+  FileSearch,
   BarChart3,
   FileText,
   Download,
@@ -25,6 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { LangToggle } from "@/components/LangToggle";
+import { Logo } from "@/components/Logo";
 import { useT, type DictKey } from "@/lib/i18n";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
@@ -48,7 +49,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/app/surveys", labelKey: "navSurveys", icon: ClipboardList },
       { to: "/app/question-bank", labelKey: "navQuestionBank", icon: Library },
-      { to: "/app/templates", labelKey: "navTemplates", icon: LayoutTemplate },
       { to: "/app/qr", labelKey: "navQr", icon: QrCode },
     ],
   },
@@ -56,6 +56,7 @@ const NAV_GROUPS: NavGroup[] = [
     labelKey: "navGroupInsights",
     items: [
       { to: "/app/responses", labelKey: "navResponses", icon: Inbox },
+      { to: "/app/response-explorer", labelKey: "navResponseExplorer", icon: FileSearch },
       { to: "/app/analytics", labelKey: "navAnalytics", icon: BarChart3 },
       { to: "/app/reports", labelKey: "navReports", icon: FileText },
       { to: "/app/export", labelKey: "navExport", icon: Download },
@@ -94,9 +95,9 @@ const ROUTE_PREFETCH: Partial<Record<string, () => Promise<unknown>>> = {
   "/app": () => import("@/pages/admin/Overview"),
   "/app/surveys": () => import("@/pages/admin/SurveyList"),
   "/app/question-bank": () => import("@/pages/admin/QuestionBank"),
-  "/app/templates": () => import("@/pages/admin/Templates"),
   "/app/qr": () => import("@/pages/admin/QrManager"),
   "/app/responses": () => import("@/pages/admin/Responses"),
+  "/app/response-explorer": () => import("@/pages/admin/ResponseExplorer"),
   "/app/analytics": () => import("@/pages/admin/AnalyticsHome"),
   "/app/reports": () => import("@/pages/admin/Reports"),
   "/app/export": () => import("@/pages/admin/ExportCenter"),
@@ -162,9 +163,9 @@ function SidebarBody({ expanded }: { expanded: boolean }) {
   return (
     <>
       <div className="flex items-center gap-3 px-[7px] pb-4">
-        <motion.div whileHover={{ rotate: -8, scale: 1.06 }} transition={{ type: "spring", stiffness: 300, damping: 14 }} className="brand-gradient grid h-9 w-9 shrink-0 place-items-center rounded-control t-title font-bold text-primary-foreground shadow-sm">
-          J
-        </motion.div>
+        <motion.span whileHover={{ rotate: -8, scale: 1.06 }} transition={{ type: "spring", stiffness: 300, damping: 14 }} className="inline-flex">
+          <Logo size={40} />
+        </motion.span>
         {expanded && (
           <div className="min-w-0 leading-tight">
             <div className="truncate t-card font-semibold tracking-tight">Jeevana Insight</div>
@@ -377,7 +378,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <PanelLeft className="h-[18px] w-[18px]" />
           </button>
           <div className="flex min-w-0 items-center gap-2 md:hidden">
-            <div className="brand-gradient grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-bold text-primary-foreground">J</div>
+            <Logo size={32} />
             <span className="truncate t-card font-semibold tracking-tight">Jeevana Insight</span>
           </div>
           <div className="flex-1" />

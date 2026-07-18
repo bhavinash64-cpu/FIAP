@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
-import { Shield, Lock, SearchX, Loader2 } from "lucide-react";
+import { Lock, SearchX, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { LangToggle } from "@/components/LangToggle";
+import { Logo } from "@/components/Logo";
 import { WelcomeStage, ConsentStage, InstructionsStage } from "@/components/assessment/IntroStages";
 import { QuestionStage } from "@/components/assessment/QuestionStage";
 import { ReviewStage } from "@/components/assessment/ReviewStage";
@@ -281,9 +282,7 @@ function StatusScreen({ icon: Icon, title, body }: { icon: typeof SearchX; title
     <div className="flex min-h-dvh flex-col bg-canvas">
       <header className="border-b border-border bg-card/90">
         <div className="mx-auto flex h-16 max-w-2xl items-center gap-3 px-5 sm:px-6">
-          <div className="brand-gradient grid h-9 w-9 shrink-0 place-items-center rounded-control">
-            <Shield className="h-[18px] w-[18px] text-primary-foreground" strokeWidth={1.8} />
-          </div>
+          <Logo size={36} />
           <div className="t-caption font-semibold text-muted-foreground">{t("appShort")}</div>
           <div className="ml-auto">
             <LangToggle size="sm" />

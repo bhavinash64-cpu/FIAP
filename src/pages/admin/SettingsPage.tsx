@@ -184,6 +184,7 @@ function VoiceSection() {
                   aria-pressed={rate === r}
                   className={cn(
                     "h-10 flex-1 rounded-control text-sm font-semibold tabular-nums transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[hsl(var(--focus-ring)/0.35)] focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                     rate === r
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-muted-foreground hover:text-foreground",
@@ -245,6 +246,7 @@ function ThemeSection() {
               aria-pressed={active}
               className={cn(
                 "flex h-20 flex-col items-center justify-center gap-2 rounded-surface border-2 transition-colors",
+                "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[hsl(var(--focus-ring)/0.35)] focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 active ? "border-primary bg-accent text-primary" : "border-border text-muted-foreground hover:border-primary/40",
               )}
             >

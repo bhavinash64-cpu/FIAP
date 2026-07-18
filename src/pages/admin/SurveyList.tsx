@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "framer-motion";
 import { Plus, FileQuestion, Users, CalendarDays, Trash2, BarChart3, ArrowUpRight } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import { toast } from "sonner";
 
 export default function SurveyList() {
   const nav = useNavigate();
+  const qc = useQueryClient();
   const mode = useLangMode();
   const te = mode === "te";
   const reduceMotion = useReducedMotion();
@@ -50,6 +52,8 @@ export default function SurveyList() {
           ? { title_en: title, title_te: title, description_en: desc, description_te: desc }
           : { title_en: title, description_en: desc },
       );
+      // Refresh the shared cache the dashboard / analytics / QR pages read.
+      qc.invalidateQueries({ queryKey: ["surveys"] });
       toast.success(te ? "సర్వే సృష్టించబడింది" : "Survey created");
       nav(`/app/surveys/${id}/edit`);
     } catch (e) {
@@ -63,6 +67,7 @@ export default function SurveyList() {
     if (!deleteId) return;
     try {
       await deleteSurvey(deleteId);
+      qc.invalidateQueries({ queryKey: ["surveys"] });
       toast.success("Survey deleted");
       setDeleteId(null);
       load();
@@ -105,41 +110,44 @@ export default function SurveyList() {
           </Button>
         </motion.div>
       ) : (
-        <motion.div variants={staggerParent} initial="hidden" animate="show" className="mt-8 flex flex-col gap-4">
+        <motion.div variants={staggerParent} initial="hidden" animate="show" className="mt-6 flex flex-col gap-2.5">
           {surveys.map((s) => (
             <motion.div key={s.id} variants={staggerChild}>
-              <div className="group flex flex-col gap-4 rounded-surface border border-border bg-card px-6 py-6 shadow-[var(--highlight-top),var(--shadow-sm)] transition-colors duration-base ease-out hover:bg-sunken sm:flex-row sm:items-center sm:gap-6">
-                {/* Content */}
+              {/* Denser single-row card: status + title on one line, meta beneath,
+                  consistent trailing actions. Roughly half the previous height. */}
+              <div className="group flex items-center gap-4 rounded-surface border border-border/70 bg-card px-4 py-3.5 transition-colors duration-fast ease-out hover:border-border-strong hover:bg-sunken sm:px-5">
                 <div className="min-w-0 flex-1">
-                  <StatusBadge status={s.status} />
-                  <Link to={`/app/surveys/${s.id}/edit`} className="mt-3 block truncate t-card transition-colors hover:text-primary">
-                    {s.title_en}
-                  </Link>
-                  {s.description_en && <p className="mt-1 line-clamp-1 t-caption text-muted-foreground">{s.description_en}</p>}
-
-                  <div className="mt-3 flex flex-wrap items-center gap-4 t-caption text-muted-foreground">
-                    <span className="inline-flex items-center gap-1"><FileQuestion className="h-3.5 w-3.5" strokeWidth={1.5} />{s.question_count} questions</span>
-                    <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5" strokeWidth={1.5} />{s.response_count} responses</span>
-                    <span className="inline-flex items-center gap-1"><CalendarDays className="h-3.5 w-3.5" strokeWidth={1.5} />{new Date(s.created_at).toLocaleDateString()}</span>
+                  <div className="flex items-center gap-2.5">
+                    <StatusBadge status={s.status} />
+                    <Link to={`/app/surveys/${s.id}/edit`} className="min-w-0 truncate t-card transition-colors hover:text-primary">
+                      {s.title_en}
+                    </Link>
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 t-caption text-muted-foreground">
+                    <span className="inline-flex items-center gap-1"><FileQuestion className="h-3.5 w-3.5" strokeWidth={1.6} />{s.question_count} questions</span>
+                    <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5" strokeWidth={1.6} />{s.response_count} responses</span>
+                    <span className="hidden items-center gap-1 sm:inline-flex"><CalendarDays className="h-3.5 w-3.5" strokeWidth={1.6} />{new Date(s.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
 
-                {/* Actions */}
-                <div className="flex shrink-0 items-center gap-2">
-                  <Button asChild size="sm" variant="secondary">
-                    <Link to={`/app/surveys/${s.id}/edit`}>Open <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.5} /></Link>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button asChild size="sm" variant="secondary" className="hidden sm:inline-flex">
+                    <Link to={`/app/surveys/${s.id}/edit`}>Open <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.6} /></Link>
                   </Button>
-                  <Button asChild size="sm" variant="ghost" aria-label="Analytics">
-                    <Link to={`/app/surveys/${s.id}/analytics`}><BarChart3 className="h-3.5 w-3.5" strokeWidth={1.5} /></Link>
+                  <Button asChild size="icon" variant="ghost" aria-label="Open" className="h-9 w-9 sm:hidden">
+                    <Link to={`/app/surveys/${s.id}/edit`}><ArrowUpRight className="h-4 w-4" strokeWidth={1.6} /></Link>
+                  </Button>
+                  <Button asChild size="icon" variant="ghost" aria-label="Analytics" className="h-9 w-9">
+                    <Link to={`/app/surveys/${s.id}/analytics`}><BarChart3 className="h-4 w-4" strokeWidth={1.6} /></Link>
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => setDeleteId(s.id)}
                     aria-label="Delete survey"
-                    className="h-9 w-9 text-tertiary opacity-0 hover:bg-danger/10 hover:text-danger focus:opacity-100 group-hover:opacity-100 active:scale-90"
+                    className="h-9 w-9 text-tertiary transition-colors hover:bg-danger/10 hover:text-danger focus-visible:text-tertiary active:scale-90 sm:text-transparent sm:group-hover:text-tertiary"
                   >
-                    <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                    <Trash2 className="h-4 w-4" strokeWidth={1.6} />
                   </Button>
                 </div>
               </div>

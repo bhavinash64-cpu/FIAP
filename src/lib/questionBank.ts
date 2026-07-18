@@ -346,11 +346,14 @@ export async function duplicateInstrument(inst: BankInstrument): Promise<void> {
 // Items — CRUD
 // ---------------------------------------------------------------------------
 
-/** Sensible starting options so a new radio/checkbox question is never born
- *  with an empty, unanswerable option list. */
+/** Four starting options, so a new choice question arrives ready to use — most
+ *  research scales are 4–5 points, and re-adding options every time is friction.
+ *  The administrator can add or remove from here. */
 const DEFAULT_OPTIONS = [
   { label_en: "Option 1", label_te: null },
   { label_en: "Option 2", label_te: null },
+  { label_en: "Option 3", label_te: null },
+  { label_en: "Option 4", label_te: null },
 ];
 
 export async function createItem(

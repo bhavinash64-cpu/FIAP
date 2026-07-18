@@ -1,372 +1,548 @@
+import { useCallback } from "react";
 import { Link } from "react-router-dom";
-import { motion, useReducedMotion, type Variants } from "framer-motion";
-import { ArrowRight, Lock, ShieldCheck, Compass, HeartPulse, Building2 } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import {
+  ArrowRight, Lock, BookOpen, LifeBuoy,
+  ClipboardList, Library, QrCode, Users, FileSearch, BarChart3, FileText, Download, Bell, ScrollText,
+  ShieldCheck, KeyRound, Database, Fingerprint, EyeOff,
+  FlaskConical, Landmark, Building2, Stethoscope, GraduationCap,
+  BadgeCheck, type LucideIcon,
+} from "lucide-react";
 import { LangToggle } from "@/components/LangToggle";
-import { BrandMark } from "@/components/BrandMark";
+import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { HeroWorkflow } from "@/components/landing/HeroWorkflow";
+import { ProductShowcase } from "@/components/landing/ProductShowcase";
+import {
+  ScrollProgress, Reveal, RevealHeading, Magnetic, CountInView, Parallax,
+  useScrolled, PREMIUM_EASE,
+} from "@/components/landing/motion";
+import { cn } from "@/lib/utils";
 
 /* ────────────────────────────────────────────────────────────────────────
-   Jeevana Insight — Landing
-   One purpose: an elegant, calm entrance that earns the click on "Sign in".
-   Typography leads; the illustration is an abstract composition of insight —
-   floating research cards, three intersecting circles, soft concentric rings.
-   Every color/radius/shadow/spacing value comes from the design token system.
+   Jeevana Insight — the platform's front door.
+
+   The layout and copy are fixed. This file's job is the *feel*: a product
+   portal that reads as expensive software — cinematic reveals, physical
+   buttons, cards with weight, an illustration that breathes. Every effect is
+   transform/opacity/filter (GPU, 60fps), collapses under reduced-motion, and
+   ships parallax/magnetism to desktop only.
+
+   Palette is the supplied system, scoped to `.landing-portal` so the token
+   classes below render in it without touching the app's own tokens.
    ──────────────────────────────────────────────────────────────────────── */
 
-const EASE = [0.33, 1, 0.68, 1] as const; // --ease-out
+const PALETTE = `
+  .landing-portal {
+    --bg-canvas: 60 5% 98%;        /* #FAFAF9 */
+    --background: 60 5% 98%;
+    --bg-surface: 0 0% 100%;       /* #FFFFFF */
+    --bg-sunken: 60 5% 96%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    --foreground: 0 0% 10%;        /* #1A1A1A */
+    --text-primary: 0 0% 10%;
+    --text-secondary: 223 10% 40%; /* #5B6170 */
+    --text-tertiary: 223 8% 56%;
+    --muted: 60 5% 96%;
+    --muted-foreground: 223 10% 40%;
+    --border-subtle: 240 22% 94%;  /* #ECECF3 */
+    --border-strong: 240 18% 89%;
+    --border: 240 22% 94%;
+    --input: 240 22% 94%;
+    --primary: 245 91% 63%;        /* #5B4CF7 */
+    --primary-hover: 246 84% 57%;
+    --primary-active: 246 74% 50%;
+    --primary-foreground: 0 0% 100%;
+    --primary-tint: 245 100% 97%;
+    --accent: 245 100% 97%;
+    --accent-foreground: 245 91% 63%;
+    --secondary: 60 5% 96%;
+    --secondary-foreground: 0 0% 10%;
+    --success: 151 82% 34%;        /* #0F9D58 */
+    --warning: 28 80% 52%;         /* #E67E22 */
+    --danger: 4 71% 50%;           /* #D93025 */
+    --destructive: 4 71% 50%;
+    --ring: 245 91% 63%;
+    --focus-ring: 245 91% 63%;
+  }
+`;
 
+/* Card hover choreography — one shared voice. Shadow grows, border brightens,
+   the card lifts 6px; the icon scales, tilts and saturates. All transform/
+   filter, all on the premium curve. */
+// No permanent will-change: these cards are static at rest and only transform
+// on hover, so promoting all ~24 to their own layers for the page's lifetime
+// would waste compositor memory. The browser promotes them fine on hover-intent.
+const CARD =
+  "group rounded-2xl border border-border bg-canvas transition-[transform,box-shadow,border-color] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1.5 hover:border-primary/30 hover:shadow-[0_1px_2px_rgba(20,20,25,0.04),0_20px_44px_-22px_rgba(91,76,247,0.24)]";
+const CARD_ICON =
+  "transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.08] group-hover:rotate-[3deg]";
+const CARD_LIFT = "transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-y-0.5";
+
+/* ── Content (real platform data) ───────────────────────────────────────── */
+
+const WORKFLOW = [
+  { icon: ClipboardList, title: "Create assessment", line: "Build questionnaires from validated instruments." },
+  { icon: QrCode, title: "Generate QR", line: "Publish a secure QR code and shareable link." },
+  { icon: Users, title: "Family responds", line: "Answered in English or Telugu, with no login." },
+  { icon: Database, title: "Responses stored", line: "Structured answers recorded securely." },
+  { icon: BarChart3, title: "Analytics", line: "Trends and per-question breakdowns, live." },
+  { icon: FileText, title: "Research reports", line: "Printable reports and exportable datasets." },
+];
+
+const FEATURES: { icon: LucideIcon; title: string; line: string }[] = [
+  { icon: ClipboardList, title: "Survey Builder", line: "Design structured questionnaires using validated research instruments." },
+  { icon: Library, title: "Question Library", line: "A central repository of reusable questions and response scales." },
+  { icon: QrCode, title: "QR Distribution", line: "Secure QR code and link generation for every published survey." },
+  { icon: Users, title: "Family Assessment", line: "A simple, bilingual assessment experience for respondents." },
+  { icon: FileSearch, title: "Response Explorer", line: "Search, filter and review individual responses in detail." },
+  { icon: BarChart3, title: "Analytics", line: "Visualise trends, completion and per-question findings." },
+  { icon: FileText, title: "Reports", line: "Generate printable, period-over-period research reports." },
+  { icon: Download, title: "Export Center", line: "Download structured datasets for external analysis." },
+  { icon: Bell, title: "Notifications", line: "Stay informed about assessment and response activity." },
+  { icon: ScrollText, title: "Audit Logs", line: "Every administrative action is recorded and traceable." },
+];
+
+const INSTRUMENTS = [
+  { code: "WHO-5", name: "WHO Well-Being Index", n: 5, desc: "Subjective well-being over the past two weeks." },
+  { code: "IRI", name: "Interpersonal Reactivity Index", n: 28, desc: "Multidimensional empathy across four subscales." },
+  { code: "BDI", name: "Beck Depression Inventory", n: 21, desc: "Grouped statements on depressive symptoms." },
+  { code: "PID-5-BF", name: "Personality Inventory for DSM-5 (Brief)", n: 25, desc: "Screen across five personality trait domains." },
+  { code: "CIUS", name: "Compulsive Internet Use Scale", n: 14, desc: "Problematic internet use for private purposes." },
+  { code: "STAXI", name: "Trait Anger Scale", n: 10, desc: "Disposition toward experiencing anger." },
+  { code: "IMP", name: "Eysenck Impulsiveness Scale", n: 24, desc: "Yes/no measure of impulsiveness." },
+  { code: "BHS", name: "Hopelessness (single item)", n: 1, desc: "Single true/false item on future outlook." },
+];
+
+const SECURITY: { icon: LucideIcon; title: string; line: string }[] = [
+  { icon: KeyRound, title: "Role-Based Access", line: "Only authorised administrators reach the console." },
+  { icon: Database, title: "Encrypted Storage", line: "Responses are stored securely, with row-level protection." },
+  { icon: ScrollText, title: "Audit Trails", line: "Every administrative action is recorded immutably." },
+  { icon: Fingerprint, title: "Secure Authentication", line: "Session-based sign-in; public sign-up is disabled." },
+  { icon: EyeOff, title: "Institutional Privacy", line: "Respondents need no login or personal identifiers." },
+];
+
+const SECTORS: { icon: LucideIcon; label: string }[] = [
+  { icon: FlaskConical, label: "Research" },
+  { icon: Landmark, label: "Public Institutions" },
+  { icon: Building2, label: "Government" },
+  { icon: Stethoscope, label: "Healthcare" },
+  { icon: GraduationCap, label: "Academic Organizations" },
+];
+
+/* ── Primitives ─────────────────────────────────────────────────────────── */
+
+function SectionEyebrow({ children }: { children: React.ReactNode }) {
+  return <div className="eyebrow text-primary">{children}</div>;
+}
+
+/** A CTA with weight: magnetic pull toward the cursor, a 3px lift and 1.02
+ *  scale on hover, a 0.98 press, and an arrow that slides 6px. */
+function Cta({
+  variant = "default", to, href, onClick, children,
+}: {
+  variant?: "default" | "secondary";
+  to?: string;
+  href?: string;
+  onClick?: (e: React.MouseEvent) => void;
+  children: React.ReactNode;
+}) {
+  const reduce = useReducedMotion();
+  const shadow =
+    variant === "default"
+      ? "hover:shadow-[0_10px_30px_-8px_rgba(91,76,247,0.5)]"
+      : "hover:shadow-[0_10px_28px_-12px_rgba(20,20,25,0.25)]";
+  const btn = (
+    <Button asChild size="lg" variant={variant} className={cn("group rounded-xl transition-shadow duration-300", shadow)}>
+      {to ? <Link to={to}>{children}</Link> : <a href={href} onClick={onClick}>{children}</a>}
+    </Button>
+  );
+  if (reduce) return btn;
+  return (
+    <Magnetic strength={6}>
+      <motion.span
+        className="inline-block"
+        whileHover={{ y: -3, scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        transition={{ type: "spring", stiffness: 420, damping: 17 }}
+      >
+        {btn}
+      </motion.span>
+    </Magnetic>
+  );
+}
+
+const Arrow = () => (
+  <ArrowRight className="h-[18px] w-[18px] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1.5" strokeWidth={1.8} />
+);
+
+/* ── Page ───────────────────────────────────────────────────────────────── */
 
 export default function Landing() {
   const reduce = useReducedMotion();
+  const scrolled = useScrolled(8);
 
-  const container: Variants = {
-    hidden: {},
-    show: { transition: { staggerChildren: reduce ? 0 : 0.08, delayChildren: reduce ? 0 : 0.05 } },
-  };
-  const item: Variants = {
-    hidden: reduce ? { opacity: 0 } : { opacity: 0, y: 8 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE } },
-  };
+  const scrollTo = useCallback((id: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    document.getElementById(id)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  }, [reduce]);
 
   return (
-    <div className="relative min-h-dvh overflow-hidden bg-canvas text-foreground">
-      {/* Ambient lighting — one indigo family, faint, fades to transparent */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute left-1/2 top-[-14%] h-[46rem] w-[46rem] -translate-x-1/2 rounded-pill bg-[radial-gradient(circle,hsl(var(--accent-lavender)/0.16),transparent_62%)]" />
-        <div className="absolute right-[-10%] top-[6%] h-[34rem] w-[34rem] rounded-pill bg-[radial-gradient(circle,hsl(var(--primary)/0.07),transparent_65%)]" />
-      </div>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4, ease: PREMIUM_EASE }}
+      className="landing-portal min-h-dvh bg-canvas text-foreground"
+    >
+      <style>{PALETTE}</style>
+      <ScrollProgress />
 
-      {/* ── Header ─────────────────────────────────────────────────────── */}
-      <motion.header
-        initial={reduce ? { opacity: 0 } : { opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: EASE }}
-        className="mx-auto flex max-w-[1240px] items-center gap-3 px-6 py-6 sm:px-8"
+      {/* ── Navigation — transparent at rest, frosts on scroll ─────────── */}
+      <header
+        className={cn(
+          "sticky top-0 z-40 transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300",
+          scrolled
+            ? "border-b border-border bg-canvas/85 shadow-[0_1px_0_rgba(20,20,25,0.03),0_10px_30px_-24px_rgba(20,20,25,0.3)] backdrop-blur-xl"
+            : "border-b border-transparent bg-transparent",
+        )}
       >
-        <Link to="/" className="flex items-center gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-control bg-surface shadow-sm ring-1 ring-border">
-            <BrandMark className="h-6 w-6" />
-          </span>
-          <span className="leading-tight">
-            <span className="t-caption block font-semibold text-foreground">Jeevana Insight</span>
-            <span className="t-caption block text-tertiary">Family Assessment Platform</span>
-          </span>
-        </Link>
+        <div className="mx-auto flex h-16 max-w-[1200px] items-center gap-3 px-4 sm:gap-4 sm:px-6 lg:px-8">
+          <Link to="/" className={cn("flex min-w-0 items-center gap-2.5 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]", scrolled && "scale-[0.97]")}>
+            <Logo size={40} />
+            <span className="min-w-0 leading-tight">
+              <span className="block truncate t-caption font-semibold tracking-tight">Jeevana Insight</span>
+              <span className="hidden text-[11px] text-muted-foreground sm:block">AP Police · Research Platform</span>
+            </span>
+          </Link>
 
-        <div className="ml-auto flex items-center gap-3">
-          <LangToggle />
-          <Button asChild className="group">
-            <Link to="/auth">
-              Sign in
-              <ArrowRight className="transition-transform duration-base ease-out group-hover:translate-x-1" strokeWidth={1.5} />
-            </Link>
-          </Button>
+          <nav className="ml-auto hidden items-center gap-1 md:flex">
+            {[
+              { label: "Platform", id: "overview", icon: null as LucideIcon | null },
+              { label: "Documentation", id: "capabilities", icon: BookOpen },
+              { label: "Support", id: "footer", icon: LifeBuoy },
+            ].map((l) => (
+              <a
+                key={l.label}
+                href={`#${l.id}`}
+                onClick={scrollTo(l.id)}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 t-caption font-medium text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground"
+              >
+                {l.icon && <l.icon className="h-3.5 w-3.5" strokeWidth={1.8} />} {l.label}
+              </a>
+            ))}
+          </nav>
+
+          <div className="ml-auto flex shrink-0 items-center gap-2 md:ml-3">
+            {/* Below sm the footer's language switch stands in, so the brand
+                name keeps its room instead of truncating to "J…". */}
+            <span className="hidden sm:block"><LangToggle size="sm" /></span>
+            <Cta to="/auth">Sign In <Arrow /></Cta>
+          </div>
         </div>
-      </motion.header>
+      </header>
 
       {/* ── Hero ───────────────────────────────────────────────────────── */}
-      <section className="mx-auto grid max-w-[1240px] items-center gap-12 px-6 pb-8 pt-8 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-8 lg:pt-16">
-        {/* Copy */}
-        <motion.div initial="hidden" animate="show" variants={container} className="max-w-xl">
-          <motion.p variants={item} className="eyebrow text-primary">
-            Research · Understand · Empower
-          </motion.p>
-
-          <motion.h1 variants={item} className="font-editorial t-hero mt-6 font-normal">
-            Understand every story.
-            <br />
-            Build a <span className="italic text-primary">better tomorrow.</span>
-          </motion.h1>
-
-          <motion.p variants={item} className="mt-6 max-w-md t-body text-muted-foreground">
-            A secure, intelligent space to collect, understand and turn family insights into
-            meaningful action — made for researchers and professionals who care.
-          </motion.p>
-
-          <motion.div variants={item} className="mt-8 flex flex-col items-start gap-4">
-            <Button
-              asChild
-              size="lg"
-              className="group shadow-[var(--highlight-top),var(--shadow-md)] transition-[transform,box-shadow,background-color] duration-base ease-out hover:-translate-y-px hover:shadow-[var(--highlight-top),var(--shadow-float)] active:translate-y-0"
+      <section className="mx-auto max-w-[1200px] px-4 pb-16 pt-12 sm:px-6 sm:pb-24 lg:px-8 lg:pt-20">
+        {/* grid-cols-1 → minmax(0,1fr); without it the fluid headline's
+            max-content forces the track wider than a 375–414px viewport. */}
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-16">
+          <div className="min-w-0">
+            <motion.div
+              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: PREMIUM_EASE }}
+              className="inline-flex max-w-full items-center gap-2 rounded-xl border border-border bg-card px-3 py-1.5 t-caption font-medium text-muted-foreground"
             >
-              <Link to="/auth">
-                <Lock className="opacity-80" strokeWidth={1.5} />
-                Sign in to continue
-                <ArrowRight className="transition-transform duration-base ease-out group-hover:translate-x-1" strokeWidth={1.5} />
-              </Link>
-            </Button>
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-success" />
+              <span className="hidden min-w-0 sm:inline">Government of Andhra Pradesh · Department of Police</span>
+              <span className="min-w-0 sm:hidden">Govt. of Andhra Pradesh · Police Dept.</span>
+            </motion.div>
 
-            <div className="flex items-center gap-2 t-caption text-muted-foreground">
-              <ShieldCheck className="h-4 w-4 text-primary/70" strokeWidth={1.5} />
-              Private · Secure · Built with trust
-            </div>
+            <RevealHeading
+              as="h1"
+              immediate
+              lines={["Family Assessment", "Research Platform"]}
+              className="t-display mt-6 font-semibold tracking-tight"
+            />
+
+            <motion.p
+              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: PREMIUM_EASE, delay: 0.24 }}
+              className="mt-6 max-w-xl t-body text-muted-foreground"
+            >
+              A secure digital platform for creating validated assessments, distributing questionnaires through QR
+              codes, collecting structured responses, and generating research insights.
+            </motion.p>
+
+            <motion.p
+              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: PREMIUM_EASE, delay: 0.3 }}
+              className="mt-3 max-w-xl t-caption text-muted-foreground"
+            >
+              Built for authorised researchers, institutions and public sector organisations to conduct structured
+              family assessments using validated research instruments.
+            </motion.p>
+
+            <motion.div
+              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: PREMIUM_EASE, delay: 0.36 }}
+              className="mt-8 flex flex-col gap-3 sm:flex-row"
+            >
+              <Cta to="/auth"><Lock className="h-[18px] w-[18px]" strokeWidth={1.8} /> Sign In</Cta>
+              <Cta variant="secondary" href="#overview" onClick={scrollTo("overview")}>View Platform Overview <Arrow /></Cta>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.8, ease: PREMIUM_EASE, delay: 0.5 }}
+              className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 t-caption text-muted-foreground"
+            >
+              <span className="inline-flex items-center gap-1.5"><BadgeCheck className="h-4 w-4 text-primary" strokeWidth={1.8} /> <CountInView value={8} /> validated instruments</span>
+              <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-primary" strokeWidth={1.8} /> Role-based &amp; audited</span>
+              <span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4 text-primary" strokeWidth={1.8} /> Bilingual · English &amp; Telugu</span>
+            </motion.div>
+          </div>
+
+          {/* The illustration breathes and reacts to the cursor; parallax on the
+              whole panel is desktop-only and off under reduced-motion. */}
+          <motion.div
+            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, ease: PREMIUM_EASE, delay: 0.2 }}
+            className="min-w-0"
+          >
+            <Parallax distance={12}>
+              <HeroWorkflow />
+            </Parallax>
           </motion.div>
-        </motion.div>
-
-        {/* Illustration */}
-        <Illustration />
+        </div>
       </section>
 
-      {/* ── Supporting section ─────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1240px] px-6 pb-24 pt-16 sm:px-8 lg:pt-24">
-        <motion.h2
-          initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.5, ease: EASE }}
-          className="eyebrow text-center"
-        >
-          Designed for meaningful work
-        </motion.h2>
+      {/* ── Workflow strip ─────────────────────────────────────────────── */}
+      <section id="overview" className="scroll-mt-20 border-y border-border bg-card">
+        <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+          <Reveal className="max-w-2xl">
+            <SectionEyebrow>How it works</SectionEyebrow>
+            <RevealHeading lines={["From assessment to insight, end to end"]} className="mt-3 t-title font-semibold tracking-tight" />
+            <p className="mt-3 t-body text-muted-foreground">
+              One connected pipeline. Each stage is a working part of the platform, not a promise.
+            </p>
+          </Reveal>
 
-        <div className="mx-auto mt-12 grid max-w-4xl gap-6 sm:grid-cols-3">
-          {[
-            { icon: Compass, title: "For Researchers", line: "Meaningful insight that supports studies and shapes policy." },
-            { icon: HeartPulse, title: "For Practitioners", line: "Early understanding that leads to timely, better care." },
-            { icon: Building2, title: "For Organizations", line: "Data-driven clarity for stronger, healthier communities." },
-          ].map((c, i) => (
-            <motion.div
-              key={c.title}
-              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-60px" }}
-              transition={{ duration: 0.5, ease: EASE, delay: i * 0.08 }}
-            >
-              <Card className="group h-full transition-[transform,box-shadow] duration-base ease-out hover:-translate-y-[2px] hover:shadow-md">
-                <CardHeader>
-                  <span className="grid h-11 w-11 place-items-center rounded-control bg-accent-tint text-primary transition-transform duration-slow ease-out group-hover:scale-105">
-                    <c.icon className="h-5 w-5" strokeWidth={1.5} />
-                  </span>
-                  <CardTitle className="mt-2">{c.title}</CardTitle>
-                  <CardDescription>{c.line}</CardDescription>
-                </CardHeader>
-              </Card>
-            </motion.div>
+          <div className="mt-12 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+            {WORKFLOW.map((step, i) => (
+              <Reveal key={step.title} delay={i * 0.06}>
+                <div className={cn(CARD, "relative flex h-full flex-col p-4")}>
+                  {i < WORKFLOW.length - 1 && (
+                    <span aria-hidden className="absolute -right-3 top-9 z-10 hidden text-border-strong lg:block">
+                      <ArrowRight className="h-4 w-4" strokeWidth={2} />
+                    </span>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent text-primary">
+                      <step.icon className={cn("h-[18px] w-[18px]", CARD_ICON)} strokeWidth={1.8} />
+                    </span>
+                    <span className="text-[11px] font-semibold tabular-nums text-tertiary">{String(i + 1).padStart(2, "0")}</span>
+                  </div>
+                  <div className={cn("mt-3", CARD_LIFT)}>
+                    <div className="t-card font-semibold leading-snug">{step.title}</div>
+                    <div className="mt-1 t-caption text-muted-foreground">{step.line}</div>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Capabilities ───────────────────────────────────────────────── */}
+      <section id="capabilities" className="mx-auto max-w-[1200px] scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+        <Reveal className="max-w-2xl">
+          <SectionEyebrow>Capabilities</SectionEyebrow>
+          <RevealHeading lines={["Everything a research programme needs"]} className="mt-3 t-title font-semibold tracking-tight" />
+          <p className="mt-3 t-body text-muted-foreground">
+            Ten working modules cover the full lifecycle — authoring, distribution, collection, analysis and governance.
+          </p>
+        </Reveal>
+
+        <Reveal delay={0.05} className="mt-12">
+          <div className="grid grid-cols-1 overflow-hidden rounded-3xl border border-border bg-card sm:grid-cols-2 lg:grid-cols-3">
+            {FEATURES.map((f) => (
+              <div
+                key={f.title}
+                className="group border-b border-r border-border p-6 transition-colors duration-300 hover:bg-muted/40 sm:p-8 [&:nth-child(2n)]:border-r-0 lg:[&:nth-child(2n)]:border-r lg:[&:nth-child(3n)]:border-r-0"
+              >
+                <span className="grid h-11 w-11 place-items-center rounded-2xl border border-border bg-canvas text-primary">
+                  <f.icon className={cn("h-5 w-5", CARD_ICON)} strokeWidth={1.7} />
+                </span>
+                <div className={CARD_LIFT}>
+                  <h3 className="mt-4 t-card font-semibold">{f.title}</h3>
+                  <p className="mt-1.5 t-caption leading-relaxed text-muted-foreground">{f.line}</p>
+                </div>
+              </div>
+            ))}
+            <div className="group flex items-center gap-3 border-b border-border p-6 sm:p-8">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-accent text-primary">
+                <ArrowRight className={cn("h-5 w-5", CARD_ICON)} strokeWidth={1.7} />
+              </span>
+              <div className="min-w-0">
+                <div className="t-card font-semibold">And more</div>
+                <Link to="/auth" className="t-caption font-medium text-primary hover:underline">Sign in to explore →</Link>
+              </div>
+            </div>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* ── Validated instruments ──────────────────────────────────────── */}
+      <section className="border-y border-border bg-card">
+        <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+          <Reveal className="max-w-2xl">
+            <SectionEyebrow>Validated instruments</SectionEyebrow>
+            <RevealHeading lines={["Built on established research scales"]} className="mt-3 t-title font-semibold tracking-tight" />
+            <p className="mt-3 t-body text-muted-foreground">
+              Eight peer-reviewed instruments are reproduced exactly — each with its original response scale — so
+              results remain comparable to published norms.
+            </p>
+          </Reveal>
+
+          <div className="mt-12 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {INSTRUMENTS.map((ins, i) => (
+              <Reveal key={ins.code} delay={(i % 4) * 0.06}>
+                <div className={cn(CARD, "flex h-full flex-col p-5")}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="t-card font-semibold tracking-tight">{ins.code}</span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success">
+                      <BadgeCheck className="h-3 w-3" strokeWidth={2} /> Validated
+                    </span>
+                  </div>
+                  <div className="mt-1 t-caption font-medium text-foreground/80">{ins.name}</div>
+                  <p className="mt-2 flex-1 t-caption leading-relaxed text-muted-foreground">{ins.desc}</p>
+                  <div className="mt-4 border-t border-border pt-3 t-caption text-muted-foreground">
+                    <CountInView value={ins.n} className="font-semibold tabular-nums text-foreground" /> {ins.n === 1 ? "item" : "items"}
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Product showcase ───────────────────────────────────────────── */}
+      <section className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+        <Reveal className="max-w-2xl">
+          <SectionEyebrow>Inside the console</SectionEyebrow>
+          <RevealHeading lines={["A clear, purposeful interface"]} className="mt-3 t-title font-semibold tracking-tight" />
+          <p className="mt-3 t-body text-muted-foreground">
+            Representative views of the actual product surfaces — the same layout and controls administrators use every day.
+          </p>
+        </Reveal>
+        <Reveal delay={0.05} className="mt-10">
+          <ProductShowcase />
+        </Reveal>
+      </section>
+
+      {/* ── Security ───────────────────────────────────────────────────── */}
+      <section className="border-y border-border bg-card">
+        <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+          <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-16">
+            <Reveal>
+              <SectionEyebrow>Security &amp; governance</SectionEyebrow>
+              <RevealHeading lines={["Trusted with sensitive research"]} className="mt-3 t-title font-semibold tracking-tight" />
+              <p className="mt-3 t-body text-muted-foreground">
+                The platform is built for the standards public institutions require — controlled access, an immutable
+                record of every action, and privacy by default for the families who respond.
+              </p>
+              <div className="mt-6 inline-flex items-center gap-2 rounded-2xl border border-border bg-canvas px-4 py-3 t-caption text-muted-foreground">
+                <ShieldCheck className="h-5 w-5 text-primary" strokeWidth={1.7} />
+                Single super-admin account · public sign-up disabled
+              </div>
+            </Reveal>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {SECURITY.map((s, i) => (
+                <Reveal key={s.title} delay={(i % 2) * 0.06}>
+                  <div className={cn(CARD, "h-full p-5")}>
+                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent text-primary">
+                      <s.icon className={cn("h-[18px] w-[18px]", CARD_ICON)} strokeWidth={1.7} />
+                    </span>
+                    <div className={CARD_LIFT}>
+                      <h3 className="mt-3 t-card font-semibold">{s.title}</h3>
+                      <p className="mt-1 t-caption leading-relaxed text-muted-foreground">{s.line}</p>
+                    </div>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Trust / built for ──────────────────────────────────────────── */}
+      <section className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+        <Reveal className="text-center">
+          <SectionEyebrow>Built for</SectionEyebrow>
+          <RevealHeading lines={["Serving research and public institutions"]} className="mx-auto mt-3 max-w-2xl t-title font-semibold tracking-tight" />
+        </Reveal>
+        <div className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {SECTORS.map((s, i) => (
+            <Reveal key={s.label} delay={i * 0.06}>
+              <div className={cn(CARD, "flex flex-col items-center gap-3 px-4 py-8 text-center")}>
+                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-accent text-primary">
+                  <s.icon className={cn("h-6 w-6", CARD_ICON)} strokeWidth={1.6} />
+                </span>
+                <span className="t-caption font-semibold">{s.label}</span>
+              </div>
+            </Reveal>
           ))}
         </div>
       </section>
 
       {/* ── Footer ─────────────────────────────────────────────────────── */}
-      <footer className="border-t border-border">
-        <div className="mx-auto flex max-w-[1240px] flex-col items-center justify-between gap-3 px-6 py-8 t-caption text-muted-foreground sm:flex-row sm:px-8">
-          <div className="flex items-center gap-2">
-            <BrandMark className="h-4 w-4" />
-            <span>© 2025 Jeevana Insight · Government of Andhra Pradesh</span>
+      <footer id="footer" className="scroll-mt-20 border-t border-border bg-card">
+        <div className="mx-auto max-w-[1200px] px-4 py-12 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-sm">
+              <div className="flex items-center gap-2.5">
+                <Logo size={36} />
+                <span className="t-card font-semibold tracking-tight">Jeevana Insight</span>
+              </div>
+              <p className="mt-3 t-caption leading-relaxed text-muted-foreground">
+                A secure family-assessment research platform for authorised institutions.
+                Government of Andhra Pradesh · Department of Police.
+              </p>
+            </div>
+
+            <nav className="flex flex-wrap gap-x-8 gap-y-3">
+              {["Documentation", "Privacy", "Terms", "Support", "Accessibility"].map((l) => (
+                <a
+                  key={l}
+                  href="#footer"
+                  onClick={scrollTo("footer")}
+                  className="t-caption font-medium text-muted-foreground transition-colors duration-200 hover:text-foreground"
+                >
+                  {l}
+                </a>
+              ))}
+            </nav>
+          </div>
+
+          <div className="mt-10 flex flex-col items-start justify-between gap-4 border-t border-border pt-6 sm:flex-row sm:items-center">
+            <div className="t-caption text-muted-foreground">© 2025 Jeevana Insight · Government of Andhra Pradesh</div>
+            <div className="flex items-center gap-4">
+              <span className="t-caption text-tertiary">v1.0</span>
+              <LangToggle size="sm" />
+            </div>
           </div>
         </div>
       </footer>
-    </div>
-  );
-}
-
-/* ══════════════════════════════════════════════════════════════════════
-   Abstract illustration — an intersecting-circles "insight" motif resting
-   on soft concentric rings, orbited by floating research cards. One indigo
-   family throughout (primary + accent-lavender), never a rainbow.
-   ══════════════════════════════════════════════════════════════════════ */
-
-function FloatCard({
-  children,
-  className = "",
-  delay = 0,
-  amount = 10,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  delay?: number;
-  amount?: number;
-}) {
-  const reduce = useReducedMotion();
-  return (
-    <motion.div
-      initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.98, y: 8 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: EASE, delay }}
-      className={`absolute ${className}`}
-    >
-      <motion.div
-        animate={reduce ? undefined : { y: [0, -amount, 0] }}
-        transition={reduce ? undefined : { duration: 5.5 + delay, repeat: Infinity, ease: "easeInOut", delay }}
-        className="rounded-field border border-border bg-card p-3 shadow-md"
-      >
-        {children}
-      </motion.div>
     </motion.div>
-  );
-}
-
-function Illustration() {
-  const reduce = useReducedMotion();
-  const float = (amount: number, duration: number) =>
-    reduce ? undefined : { y: [0, -amount, 0], transition: { duration, repeat: Infinity, ease: "easeInOut" as const } };
-
-  return (
-    <motion.div
-      initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.6, ease: EASE, delay: 0.15 }}
-      aria-hidden
-      className="relative mx-auto hidden aspect-square w-full max-w-[560px] lg:block"
-    >
-      {/* soft floor glow */}
-      <div className="absolute inset-x-[12%] bottom-[14%] h-[38%] rounded-pill bg-[radial-gradient(ellipse,hsl(var(--accent-lavender)/0.18),transparent_70%)] blur-md" />
-
-      {/* concentric rings + pedestal */}
-      <svg viewBox="0 0 400 400" className="absolute inset-0 h-full w-full" aria-hidden>
-        <defs>
-          <radialGradient id="ringFade" cx="50%" cy="46%" r="50%">
-            <stop offset="55%" stopColor="hsl(var(--primary))" stopOpacity="0" />
-            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.14" />
-          </radialGradient>
-        </defs>
-        {[150, 118, 86, 54].map((r, i) => (
-          <ellipse
-            key={r}
-            cx="200"
-            cy="212"
-            rx={r}
-            ry={r * 0.42}
-            fill="none"
-            stroke="hsl(var(--primary))"
-            strokeOpacity={0.16 - i * 0.02}
-            strokeWidth="1"
-          />
-        ))}
-        <circle cx="200" cy="190" r="150" fill="url(#ringFade)" />
-      </svg>
-
-      {/* central intersecting circles — understanding · insight · humanity */}
-      <motion.div animate={float(8, 7)} className="absolute left-1/2 top-[38%] h-[168px] w-[168px] -translate-x-1/2 -translate-y-1/2">
-        <div className="absolute inset-0 rounded-pill bg-[radial-gradient(circle,hsl(var(--accent-lavender)/0.3),transparent_70%)] blur-xl" />
-        <span className="absolute left-[6%] top-[20%] h-[92px] w-[92px] rounded-pill bg-primary opacity-70 mix-blend-multiply" />
-        <span className="absolute right-[6%] top-[20%] h-[92px] w-[92px] rounded-pill bg-accent-lavender opacity-70 mix-blend-multiply" />
-        <span className="absolute bottom-[6%] left-1/2 h-[92px] w-[92px] -translate-x-1/2 rounded-pill bg-primary opacity-40 mix-blend-multiply" />
-      </motion.div>
-
-      {/* connecting nodes */}
-      <svg viewBox="0 0 400 400" className="absolute inset-0 h-full w-full" aria-hidden>
-        {[
-          [70, 96, 150, 150],
-          [330, 90, 250, 150],
-          [86, 250, 160, 220],
-          [326, 262, 250, 216],
-        ].map(([x1, y1, x2, y2], i) => (
-          <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="hsl(var(--primary))" strokeOpacity="0.18" strokeWidth="1" strokeDasharray="2 4" />
-        ))}
-        {[[70, 96], [330, 90], [86, 250], [326, 262], [200, 60]].map(([cx, cy], i) => (
-          <circle key={i} cx={cx} cy={cy} r="3" fill="hsl(var(--primary))" fillOpacity="0.5" />
-        ))}
-      </svg>
-
-      {/* Floating research cards */}
-      <FloatCard className="left-[2%] top-[10%]" delay={0.35} amount={11}>
-        <div className="flex items-center gap-3">
-          <MiniDonut />
-          <div className="space-y-1">
-            <span className="block h-1.5 w-16 rounded-pill bg-primary/30" />
-            <span className="block h-1.5 w-11 rounded-pill bg-muted-foreground/20" />
-            <span className="block h-1.5 w-14 rounded-pill bg-muted-foreground/15" />
-          </div>
-        </div>
-      </FloatCard>
-
-      <FloatCard className="left-[-2%] top-[46%]" delay={0.6} amount={8}>
-        <MiniLine />
-      </FloatCard>
-
-      <FloatCard className="right-[1%] top-[7%]" delay={0.5} amount={12}>
-        <MiniBars />
-      </FloatCard>
-
-      <FloatCard className="left-[6%] bottom-[16%]" delay={0.75} amount={9}>
-        <div className="flex items-center gap-3">
-          <span className="grid h-9 w-9 place-items-center rounded-control bg-primary/10">
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
-          </span>
-          <div>
-            <div className="t-caption font-semibold leading-none tabular-nums text-foreground">1,248</div>
-            <div className="mt-1 t-caption text-tertiary">Responses</div>
-          </div>
-        </div>
-      </FloatCard>
-
-      <FloatCard className="right-[2%] bottom-[22%]" delay={0.9} amount={10}>
-        <div className="flex items-center gap-3">
-          <span className="grid h-9 w-9 place-items-center rounded-control bg-accent-tint">
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="hsl(var(--accent-lavender))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
-            </svg>
-          </span>
-          <div>
-            <div className="t-caption font-semibold leading-none tabular-nums text-foreground">84</div>
-            <div className="mt-1 t-caption text-tertiary">Reports generated</div>
-          </div>
-        </div>
-      </FloatCard>
-    </motion.div>
-  );
-}
-
-function MiniDonut() {
-  return (
-    <svg viewBox="0 0 36 36" className="h-10 w-10" aria-hidden>
-      <circle cx="18" cy="18" r="14" fill="none" stroke="hsl(var(--bg-sunken))" strokeWidth="4" />
-      <circle
-        cx="18" cy="18" r="14" fill="none" stroke="hsl(var(--primary))" strokeWidth="4" strokeLinecap="round"
-        strokeDasharray="60 88" transform="rotate(-90 18 18)"
-      />
-      <circle
-        cx="18" cy="18" r="14" fill="none" stroke="hsl(var(--accent-lavender))" strokeWidth="4" strokeLinecap="round"
-        strokeDasharray="26 88" strokeDashoffset="-62" transform="rotate(-90 18 18)"
-      />
-    </svg>
-  );
-}
-
-function MiniBars() {
-  const reduce = useReducedMotion();
-  const bars = [10, 18, 13, 24, 20, 30, 26];
-  return (
-    <div className="flex h-14 w-[132px] items-end gap-1">
-      {bars.map((h, i) => (
-        <motion.span
-          key={i}
-          initial={reduce ? { height: h } : { height: 0 }}
-          animate={{ height: h }}
-          transition={{ duration: 0.6, ease: EASE, delay: reduce ? 0 : 0.5 + i * 0.06 }}
-          className="flex-1 rounded-pill"
-          style={{ background: i === bars.length - 2 ? "hsl(var(--primary))" : "hsl(var(--accent-lavender))" }}
-        />
-      ))}
-    </div>
-  );
-}
-
-function MiniLine() {
-  const reduce = useReducedMotion();
-  return (
-    <svg viewBox="0 0 120 56" className="h-12 w-[128px]" fill="none" aria-hidden>
-      <defs>
-        <linearGradient id="lineArea" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.22" />
-          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d="M2 44 L22 34 L42 38 L62 20 L82 26 L102 10 L118 14 L118 54 L2 54 Z" fill="url(#lineArea)" />
-      <motion.path
-        d="M2 44 L22 34 L42 38 L62 20 L82 26 L102 10 L118 14"
-        stroke="hsl(var(--primary))"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        initial={reduce ? { pathLength: 1 } : { pathLength: 0 }}
-        animate={{ pathLength: 1 }}
-        transition={{ duration: 1, ease: EASE, delay: reduce ? 0 : 0.6 }}
-      />
-    </svg>
   );
 }

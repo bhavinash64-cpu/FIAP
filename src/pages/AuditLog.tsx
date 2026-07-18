@@ -164,7 +164,7 @@ export default function AuditLog() {
         </div>
 
         {!isLoading && filtered.length > 0 && (
-          <div className="flex items-center justify-between gap-4 border-t border-border px-5 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-t border-border px-5 py-3">
             <span className="t-caption text-muted-foreground">
               Showing{" "}
               <span className="font-semibold text-foreground tabular-nums">

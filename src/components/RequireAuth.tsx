@@ -3,7 +3,7 @@ import { Navigate, useLocation, Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { BrandMark } from "@/components/BrandMark";
+import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 
 /* The gate — the first surface anyone sees. It should feel like the product
@@ -22,7 +22,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
           animate={reduce ? { opacity: 1 } : { opacity: [0.35, 1, 0.35] }}
           transition={reduce ? { duration: 0.3 } : { duration: 2, repeat: Infinity, ease: "easeInOut" }}
         >
-          <BrandMark className="h-8 w-8" />
+          <Logo size={52} />
         </motion.div>
       </div>
     );
@@ -39,9 +39,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
           transition={{ duration: 0.5, ease: [0.33, 1, 0.68, 1] }}
           className="max-w-[26rem] text-center"
         >
-          <span className="mx-auto grid h-16 w-16 place-items-center rounded-pill bg-accent-tint">
-            <BrandMark className="h-7 w-7" />
-          </span>
+          <Logo size={64} className="mx-auto" />
           <h1 className="t-section mt-6">This workspace is private</h1>
           <p className="mt-3 t-body text-muted-foreground">
             {user.email} doesn’t have access to the admin console. Sign in with an

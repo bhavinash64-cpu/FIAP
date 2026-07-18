@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { Shield } from "lucide-react";
 import { LangToggle } from "@/components/LangToggle";
+import { Logo } from "@/components/Logo";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -30,9 +30,7 @@ export function AssessmentShell({
     <div className="flex min-h-dvh flex-col bg-canvas">
       <header className="sticky top-0 z-30 border-b border-border/60 bg-canvas/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 w-full max-w-3xl items-center gap-3 px-5 sm:px-6">
-          <div className="brand-gradient grid h-9 w-9 shrink-0 place-items-center rounded-control">
-            <Shield className="h-[18px] w-[18px] text-primary-foreground" strokeWidth={1.8} />
-          </div>
+          <Logo size={36} />
           <div className="min-w-0 flex-1 leading-tight">
             <div className="truncate t-caption font-semibold text-foreground">{t("appShort")}</div>
             <div className="truncate text-[11px] font-medium text-muted-foreground">{t("govOf")}</div>

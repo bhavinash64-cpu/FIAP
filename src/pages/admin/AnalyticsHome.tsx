@@ -16,9 +16,10 @@ import { staggerParent, staggerChild } from "@/lib/motion";
 export default function AnalyticsHome() {
   const t = useT();
   // Shared query key with every other page that lists surveys, so navigating
-  // here from the dashboard or QR page is instant off the cache.
-  const { data: surveysData } = useQuery({ queryKey: ["surveys"], queryFn: listSurveys });
-  const surveys = surveysData ?? null;
+  // here from the dashboard or QR page is instant off the cache. isPending (not
+  // `data == null`) drives the skeletons so an errored fetch settles into the
+  // empty state instead of a permanent spinner.
+  const { data: surveys = [], isPending, isError } = useQuery({ queryKey: ["surveys"], queryFn: listSurveys });
 
   const stats = useMemo(() => {
     const list = surveys ?? [];
@@ -82,8 +83,10 @@ export default function AnalyticsHome() {
         <Card className="flex flex-col">
           <CardHeader><CardTitle>Open a dashboard</CardTitle></CardHeader>
           <CardContent className="flex flex-1 flex-col">
-            {surveys === null ? (
+            {isPending ? (
               <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-control" />)}</div>
+            ) : isError ? (
+              <p className="t-body py-8 text-center text-muted-foreground">Couldn't load surveys. Please reload the page.</p>
             ) : surveys.length === 0 ? (
               <p className="t-body py-8 text-center text-muted-foreground">Publish a survey to unlock analytics.</p>
             ) : (

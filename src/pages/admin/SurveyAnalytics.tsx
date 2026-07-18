@@ -108,31 +108,39 @@ export default function SurveyAnalytics() {
         <Card className="border-dashed">
           <EmptyState
             icon={Users}
-            title="No responses yet"
-            body="Share your survey link to start collecting responses."
+            title="Analytics come to life with your first responses"
+            body="Once families begin answering, this page tells the story: your key metrics at the top, the response trend over time, and a breakdown of every question — completion, distributions, and the exact answers given."
             action={survey.slug ? <div className="w-full max-w-md"><ShareLinkCard slug={survey.slug} /></div> : (
               <Button asChild><Link to={`/app/surveys/${survey.id}/edit`}><Share2 className="mr-2" strokeWidth={1.5} />Publish this survey</Link></Button>
             )}
           />
         </Card>
       ) : (
-        <>
-          <OverviewCards stats={stats} />
+        <div className="space-y-10">
+          {/* The story, top to bottom: the numbers, then the trend, then each question. */}
+          <section>
+            <h2 className="mb-4 eyebrow text-primary">Key metrics</h2>
+            <OverviewCards stats={stats} />
+          </section>
 
-          <Card>
-            <CardHeader><CardTitle>Responses over time</CardTitle></CardHeader>
-            <CardContent>
-              {series === null ? <Skeleton className="h-[280px] rounded-field" /> : <TimeseriesChart data={series} />}
-            </CardContent>
-          </Card>
+          <section>
+            <h2 className="mb-4 eyebrow text-primary">Response trend</h2>
+            <Card>
+              <CardHeader><CardTitle>Responses over time</CardTitle></CardHeader>
+              <CardContent>
+                {series === null ? <Skeleton className="h-[280px] rounded-field" /> : <TimeseriesChart data={series} />}
+              </CardContent>
+            </Card>
+          </section>
 
-          <div>
-            <h2 className="eyebrow mb-4">Per-question breakdown</h2>
+          <section>
+            <h2 className="mb-1 eyebrow text-primary">Question-level analysis</h2>
+            <p className="mb-4 t-caption text-muted-foreground">Completion and the distribution of answers for every question.</p>
             <div className="grid gap-6 lg:grid-cols-2">
               {questions.map((q) => <QuestionBreakdownCard key={q.id} question={q} since={since} />)}
             </div>
-          </div>
-        </>
+          </section>
+        </div>
       )}
     </div>
   );
