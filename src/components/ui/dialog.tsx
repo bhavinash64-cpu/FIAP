@@ -42,8 +42,12 @@ const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-accent data-[state=open]:text-muted-foreground hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
-        <X className="h-4 w-4" />
+      {/* A real 44px target rather than a bare 16px glyph, and the house focus
+          ring (3px at focus-ring/0.35) rather than shadcn's default 2px on
+          --ring, so dismissing a dialog by keyboard looks like every other
+          focusable control in the product. */}
+      <DialogPrimitive.Close className="absolute right-3 top-3 grid h-11 w-11 place-items-center rounded-control text-muted-foreground opacity-70 ring-offset-background transition-[opacity,background-color,color] duration-fast ease-out hover:bg-sunken hover:text-foreground hover:opacity-100 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[hsl(var(--focus-ring)/0.35)] focus-visible:ring-offset-2 disabled:pointer-events-none lg:h-9 lg:w-9">
+        <X className="h-[18px] w-[18px]" strokeWidth={1.8} />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>

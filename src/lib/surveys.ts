@@ -1,6 +1,7 @@
-import { customAlphabet } from "nanoid";
+﻿import { customAlphabet } from "nanoid";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import type { AnswerMeta } from "@/lib/assessmentSession";
 import { logAudit } from "@/lib/audit";
 
 export type QuestionKind = Database["public"]["Enums"]["question_kind"];
@@ -12,7 +13,7 @@ export const QUESTION_KINDS: { value: QuestionKind; label: string; hasOptions: b
   { value: "checkboxes", label: "Checkboxes", hasOptions: true },
   { value: "likert5", label: "Likert scale (5-point)", hasOptions: false },
   { value: "yes_no", label: "Yes / No", hasOptions: false },
-  { value: "rating5", label: "Rating (1–5 stars)", hasOptions: false },
+  { value: "rating5", label: "Rating (1â€“5 stars)", hasOptions: false },
   { value: "short_text", label: "Short text", hasOptions: false },
   { value: "long_text", label: "Long text", hasOptions: false },
   { value: "dropdown", label: "Dropdown", hasOptions: true },
@@ -149,6 +150,28 @@ export async function publishSurvey(id: string): Promise<string> {
   throw new Error("Could not generate a unique link. Please try again.");
 }
 
+/**
+ * Mint a fresh slug for an already-published survey, retiring the old one.
+ *
+ * The slug IS the access credential, so this is the platform's only revocation
+ * mechanism: if a link leaks — forwarded outside the intended families, posted
+ * in a group chat — rotating it is what closes the door. The cost is that every
+ * QR already printed or handed out stops working, which is why the caller
+ * confirms first and the audit log records both slugs.
+ */
+export async function regenerateSurveyLink(id: string, previousSlug: string | null): Promise<string> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const slug = genSlug();
+    const { error } = await supabase.from("surveys").update({ slug }).eq("id", id);
+    if (!error) {
+      await logAudit("survey.link.regenerate", "survey", id, { from: previousSlug, to: slug });
+      return slug;
+    }
+    if (!/duplicate key|unique/i.test(error.message)) throw error;
+  }
+  throw new Error("Could not generate a unique link. Please try again.");
+}
+
 export async function closeSurvey(id: string) {
   const { error } = await supabase.from("surveys").update({ status: "closed" }).eq("id", id);
   if (error) throw error;
@@ -247,7 +270,7 @@ async function loadQuestions(surveyId: string): Promise<SurveyQuestion[]> {
 export async function createQuestion(
   surveyId: string,
   kind: QuestionKind = "short_text",
-  opts?: { origin?: QuestionOrigin; prompt_en?: string; section_id?: string | null; order_index?: number },
+  opts?: { origin?: QuestionOrigin; prompt_en?: string; prompt_te?: string; section_id?: string | null; order_index?: number },
 ): Promise<SurveyQuestion> {
   let nextIndex = opts?.order_index;
   if (nextIndex === undefined) {
@@ -266,6 +289,7 @@ export async function createQuestion(
       kind,
       order_index: nextIndex,
       prompt_en: opts?.prompt_en ?? "",
+      prompt_te: opts?.prompt_te ?? null,
       required: true,
       origin: opts?.origin ?? "manual",
       section_id: opts?.section_id ?? null,
@@ -290,7 +314,7 @@ export async function createQuestion(
 }
 
 // ---------------------------------------------------------------------------
-// Bulk import (PDF extraction) — always appends after the current last
+// Bulk import (PDF extraction) â€” always appends after the current last
 // question, so uploading several PDFs in sequence never overwrites earlier
 // ones. Each call creates one import_batches row for traceability.
 // ---------------------------------------------------------------------------
@@ -317,37 +341,42 @@ export async function importQuestions(
     .eq("survey_id", surveyId)
     .order("order_index", { ascending: false })
     .limit(1);
-  let nextIndex = existing && existing.length ? existing[0].order_index + 1 : 0;
+  const nextIndex = existing && existing.length ? existing[0].order_index + 1 : 0;
 
-  const created: SurveyQuestion[] = [];
-  for (const draft of drafts) {
-    const { data, error } = await supabase
-      .from("survey_questions")
-      .insert({
-        survey_id: surveyId,
-        kind: draft.kind,
-        order_index: nextIndex++,
-        prompt_en: draft.prompt_en,
-        prompt_te: draft.prompt_te || null,
-        required: true,
-        origin: sourceType,
-        source_ref: batch.id,
-      })
-      .select("*")
-      .single();
-    if (error) throw error;
+  const { data: inserted, error: qErr } = await supabase
+    .from("survey_questions")
+    .insert(drafts.map((draft, offset) => ({
+      survey_id: surveyId,
+      kind: draft.kind,
+      order_index: nextIndex + offset,
+      prompt_en: draft.prompt_en,
+      prompt_te: draft.prompt_te || null,
+      required: true,
+      origin: sourceType,
+      source_ref: batch.id,
+    })))
+    .select("*")
+    .order("order_index");
+  if (qErr) throw qErr;
 
-    let options: SurveyOption[] = [];
-    if (draft.options.length) {
-      const { data: opts, error: oErr } = await supabase
-        .from("survey_question_options")
-        .insert(draft.options.map((label, i) => ({ question_id: data.id, order_index: i, label_en: label })))
-        .select("*");
-      if (oErr) throw oErr;
-      options = (opts ?? []) as SurveyOption[];
-    }
-    created.push({ ...(data as Omit<SurveyQuestion, "options">), options });
+  const questionRows = (inserted ?? []) as Omit<SurveyQuestion, "options">[];
+  const optionRows = questionRows.flatMap((question, index) =>
+    drafts[index].options.map((label, order_index) => ({ question_id: question.id, order_index, label_en: label })),
+  );
+  let options: SurveyOption[] = [];
+  if (optionRows.length) {
+    const { data: insertedOptions, error: oErr } = await supabase
+      .from("survey_question_options")
+      .insert(optionRows)
+      .select("*");
+    if (oErr) throw oErr;
+    options = (insertedOptions ?? []) as SurveyOption[];
   }
+
+  const created = questionRows.map((question) => ({
+    ...question,
+    options: options.filter((option) => option.question_id === question.id),
+  }));
 
   await logAudit(`question.import.${sourceType}`, "survey", surveyId, { count: created.length, file_name: fileName });
   return created;
@@ -469,20 +498,40 @@ export function trackSurveyView(surveyId: string) {
 
 /**
  * Submissions go through the `submit-response` edge function rather than a
- * direct table insert — anon INSERT is revoked on survey_responses/
+ * direct table insert â€” anon INSERT is revoked on survey_responses/
  * survey_answers so this is the only write path, letting the function
  * rate-limit by a hashed IP fingerprint before anything is persisted.
  */
+export interface SubmissionContext {
+  /** Per-answer metadata: emoji seen, dwell time, skipped, edited, voice used. */
+  meta?: Record<string, AnswerMeta>;
+  startedAt?: Date;
+  /** Size of the instrument as served, so completion is stored, not inferred. */
+  questionCount?: number;
+  answeredCount?: number;
+}
+
 export async function submitSurveyResponse(
   surveyId: string,
   language: string,
   answers: Record<string, AnswerValue>,
-  startedAt?: Date,
+  context: SubmissionContext = {},
 ): Promise<string> {
   const { data, error } = await supabase.functions.invoke("submit-response", {
-    body: { survey_id: surveyId, language, answers, started_at: startedAt?.toISOString() },
+    body: {
+      survey_id: surveyId,
+      language,
+      answers,
+      meta: context.meta ?? {},
+      started_at: context.startedAt?.toISOString(),
+      question_count: context.questionCount,
+      answered_count: context.answeredCount,
+    },
   });
   if (error) throw new Error(error.message || "Could not submit your response. Please try again.");
   if (data?.error) throw new Error(data.error);
   return data.id as string;
 }
+
+
+

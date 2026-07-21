@@ -3,9 +3,44 @@ import type { AnswerValue, QuestionKind, SurveyQuestion } from "@/lib/surveys";
 /** The stages of the guided assessment, in order. */
 export type Stage = "welcome" | "consent" | "instructions" | "questions" | "review" | "done";
 
+/**
+ * What the platform knows about a single answer beyond its value.
+ *
+ * Every field here is observed, never inferred at read time: an export or an
+ * analyst should be able to reconstruct what the respondent actually did — what
+ * they saw, how long they sat with it, whether they moved past it deliberately,
+ * whether they came back and changed their mind, whether they needed the
+ * question read aloud.
+ */
+export interface AnswerMeta {
+  /** The emoji shown beside the chosen option, when that scale had one. */
+  emoji: string | null;
+  /** Seconds this question was on screen, accumulated across every visit. */
+  seconds: number;
+  /** Moved past with the Skip control — distinct from simply never reached. */
+  skipped: boolean;
+  /** The answer was changed after one had already been given. */
+  edited: boolean;
+  /** Narration was played at least once while on this question. */
+  voiceUsed: boolean;
+  /** ISO timestamp of the most recent change to this answer. */
+  answeredAt: string | null;
+}
+
+export function emptyMeta(): AnswerMeta {
+  return { emoji: null, seconds: 0, skipped: false, edited: false, voiceUsed: false, answeredAt: null };
+}
+
 export interface SessionSnapshot {
   v: 1;
   answers: Record<string, AnswerValue>;
+  /**
+   * Optional rather than versioned: a draft written before per-answer metadata
+   * existed is still a perfectly good draft, and a family mid-assessment should
+   * not lose their answers to a schema bump. Absent simply means "no metadata
+   * was captured for this session".
+   */
+  meta?: Record<string, AnswerMeta>;
   /** Index of the question the respondent was last on. */
   index: number;
   stage: Stage;
@@ -75,7 +110,15 @@ export function loadSubmission(surveyId: string): SubmissionRecord | null {
     const raw = localStorage.getItem(submissionKey(surveyId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as SubmissionRecord;
-    return parsed?.v === 1 ? parsed : null;
+    if (parsed?.v !== 1) return null;
+    // The record prevents a duplicate submit, but it must not pin a shared or
+    // family device to the Thank-You screen forever — after MAX_AGE it expires,
+    // so a later republish/retake is possible.
+    if (Date.now() - new Date(parsed.submittedAt).getTime() > MAX_AGE_MS) {
+      localStorage.removeItem(submissionKey(surveyId));
+      return null;
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -115,6 +158,22 @@ export function countAnswered(questions: SurveyQuestion[], answers: Record<strin
 /** First question with no answer, or -1 when the set is complete. */
 export function firstUnansweredIndex(questions: SurveyQuestion[], answers: Record<string, AnswerValue>): number {
   return questions.findIndex((q) => !isAnswered(answers[q.id]));
+}
+
+/** Every question still without an answer, with its position, for the review list. */
+export function unansweredQuestions(
+  questions: SurveyQuestion[],
+  answers: Record<string, AnswerValue>,
+): { question: SurveyQuestion; index: number }[] {
+  return questions
+    .map((question, index) => ({ question, index }))
+    .filter(({ question }) => !isAnswered(answers[question.id]));
+}
+
+/** 0–1. The share of the instrument the respondent actually answered. */
+export function completionRatio(questions: SurveyQuestion[], answers: Record<string, AnswerValue>): number {
+  if (!questions.length) return 0;
+  return countAnswered(questions, answers) / questions.length;
 }
 
 // ── Time estimate ──────────────────────────────────────────────────────────

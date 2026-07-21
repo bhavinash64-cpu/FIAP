@@ -37,8 +37,13 @@
     --bg-sunken:     50 17% 93%;     /* #F0EFEA input wells */
 
     --text-primary:   240 3% 11%;    /* #1C1C1E — never pure black */
-    --text-secondary: 240 5% 38%;    /* #5C5C66 */
-    --text-tertiary:  240 5% 62%;    /* #9A9AA3 */
+    --text-secondary: 240 5% 38%;    /* 6.06:1 on canvas */
+    /* Was 62%, which measured 2.58:1 on canvas and 2.45:1 in an input well —
+       far below the 4.5:1 AA floor. This is not a decorative token: it colours
+       .eyebrow, every input placeholder, chart axis labels and ~25 caption
+       sites, all of which carry meaning. 44% measures 4.85:1 on canvas,
+       5.29:1 on white and 4.61:1 on sunken. */
+    --text-tertiary:  240 5% 44%;
 
     --border-subtle:  48 12% 90%;    /* rgba(28,28,30,.06) over canvas */
     --border-strong:  45 11% 87%;    /* rgba(28,28,30,.10) over canvas */
@@ -54,7 +59,7 @@
     --focus-ring:     245 58% 51%;   /* used at /0.35 */
 
     --success: 148 33% 33%;          /* darkened so success text on the /0.12 tint clears WCAG AA 4.5:1 */
-    --warning: 38 50% 47%;           /* #B5883C */
+    --warning: 38 60% 32%;           /* darkened so warning text clears WCAG AA on its /0.10–0.14 tint */
     --danger:  4 50% 47%;            /* #B4443C */
     --brand-navy: 220 40% 25%;       /* #122A54 */
 
@@ -126,7 +131,10 @@
     --bg-sunken: 240 6% 14%;
     --text-primary: 240 12% 96%;
     --text-secondary: 240 6% 68%;
-    --text-tertiary: 240 5% 50%;
+    /* Was 50% — 4.32:1 on the dark canvas and only 3.72:1 in a sunken well,
+       both under AA. 58% measures 5.75 / 5.37 / 4.95 across canvas, surface
+       and sunken. */
+    --text-tertiary: 240 5% 58%;
     --border-subtle: 240 8% 20%;
     --border-strong: 240 8% 26%;
     --primary: 245 70% 68%;
@@ -464,13 +472,20 @@
      scale has always used — at 1024px, so desktop is byte-for-byte unchanged and
      only 320–1023px reflows. Body/caption stay fixed: shrinking reading text
      below 15px costs legibility and buys nothing. */
-  .t-display { font-size: clamp(2rem, 1.2rem + 4vw, 56px);         line-height: 1.06; letter-spacing: -0.03em;  font-weight: 600; }
-  .t-hero    { font-size: clamp(1.625rem, 1.1rem + 2.6vw, 40px);   line-height: 1.1;  letter-spacing: -0.025em; font-weight: 600; }
-  .t-title   { font-size: clamp(1.3125rem, 1.05rem + 1.3vw, 28px); line-height: 1.2;  letter-spacing: -0.02em;  font-weight: 600; }
-  .t-section { font-size: clamp(1.0625rem, 0.98rem + 0.42vw, 20px);line-height: 1.32; letter-spacing: -0.015em; font-weight: 600; }
-  .t-card    { font-size: clamp(0.9375rem, 0.91rem + 0.13vw, 16px);line-height: 1.4;  letter-spacing: -0.005em; font-weight: 600; }
-  .t-body    { font-size: 15px; line-height: 1.60; }
-  .t-caption { font-size: 13px; line-height: 1.45; letter-spacing: 0.005em;  font-weight: 500; }
+  /* Every size is rem, never px. `html.pref-large-text` scales the ROOT to
+     118%, so a px value here would simply ignore the accessibility preference —
+     which is exactly what used to happen: headings grew and the body text a
+     low-vision reader actually needs did not move at all. rem ceilings are the
+     same rendered size at 100% (0.9375rem = 15px, 3.5rem = 56px), so the
+     desktop design is byte-for-byte unchanged and only the preference behaves
+     differently. */
+  .t-display { font-size: clamp(2rem, 1.2rem + 4vw, 3.5rem);        line-height: 1.06; letter-spacing: -0.03em;  font-weight: 600; }
+  .t-hero    { font-size: clamp(1.625rem, 1.1rem + 2.6vw, 2.5rem);  line-height: 1.1;  letter-spacing: -0.025em; font-weight: 600; }
+  .t-title   { font-size: clamp(1.3125rem, 1.05rem + 1.3vw, 1.75rem);line-height: 1.2; letter-spacing: -0.02em;  font-weight: 600; }
+  .t-section { font-size: clamp(1.0625rem, 0.98rem + 0.42vw, 1.25rem);line-height: 1.32;letter-spacing: -0.015em; font-weight: 600; }
+  .t-card    { font-size: clamp(0.9375rem, 0.91rem + 0.13vw, 1rem); line-height: 1.4;  letter-spacing: -0.005em; font-weight: 600; }
+  .t-body    { font-size: 0.9375rem; line-height: 1.60; }
+  .t-caption { font-size: 0.8125rem; line-height: 1.45; letter-spacing: 0.005em;  font-weight: 500; }
 
   /* The question on the guided assessment — the largest reading text in the
      product, and the only thing on its screen. Weight stays at 500 rather than
@@ -485,7 +500,7 @@
     font-weight: 500;
   }
   .eyebrow {
-    font-size: 12px; line-height: 1.40; letter-spacing: 0.08em;
+    font-size: 0.75rem; line-height: 1.40; letter-spacing: 0.08em;
     text-transform: uppercase; font-weight: 600; color: hsl(var(--text-tertiary));
   }
 

@@ -1,22 +1,24 @@
 import { useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { QRCodeCanvas, QRCodeSVG } from "qrcode.react";
-import { Check, Copy, Download, ExternalLink, Mail, MessageCircle, Printer, Share2, Smartphone, Shield } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { Check, Copy, Download, ExternalLink, Loader2, Mail, Printer, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PrintSheet } from "@/components/share/PrintSheet";
-import { renderBilingual, useT, type LangMode } from "@/lib/i18n";
 import {
-  canNativeShare,
-  downloadQrPng,
-  mailtoHref,
-  nativeShare,
-  printSheetOnly,
-  qrFileName,
-  shareText,
-  smsHref,
-  surveyUrl,
-  whatsappHref,
-} from "@/lib/share";
-import type { Survey } from "@/lib/surveys";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { PrintSheet } from "@/components/share/PrintSheet";
+import { Logo } from "@/components/Logo";
+import { renderBilingual, useT, type LangMode } from "@/lib/i18n";
+import { downloadQrPng, mailtoHref, printSheetOnly, qrFileName, shareText, surveyUrl } from "@/lib/share";
+import { regenerateSurveyLink, type Survey } from "@/lib/surveys";
 import { toast } from "sonner";
 
 /** Ink-on-paper QR needs the dark module colour to be near-black, not brand indigo. */
@@ -24,15 +26,25 @@ const QR_PRINT_FG = "#111111";
 const QR_SCREEN_FG = "hsl(226, 64%, 24%)";
 
 /**
- * Everything needed to put a survey in a parent's hands: the QR, the link, and
- * the channels the link travels on.
+ * Everything needed to put a survey in a family's hands: the QR, the link, and
+ * the six things you can do with them.
  *
- * A parent never authenticates — the slug in the URL is the credential — so
+ * A respondent never authenticates — the slug in the URL is the credential — so
  * this card is the entire distribution story for the public side.
+ *
+ * The actions are ONE uniform grid rather than three labelled clusters of two.
+ * Clusters looked organised in a mockup and read as clutter in use: three
+ * eyebrows, three grids, and a conditional seventh button that orphaned itself
+ * on any device with a native share sheet. Six equal cells, one rhythm, no
+ * orphan row at any breakpoint.
  */
 export function SurveyShareCard({ survey, mode }: { survey: Survey; mode: LangMode }) {
   const t = useT();
+  const qc = useQueryClient();
+  const reduce = useReducedMotion();
   const [copied, setCopied] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
 
   if (!survey.slug) return null;
@@ -51,15 +63,35 @@ export function SurveyShareCard({ survey, mode }: { survey: Survey; mode: LangMo
     }
   }
 
+  async function regenerate() {
+    setRegenerating(true);
+    try {
+      await regenerateSurveyLink(survey.id, survey.slug);
+      await qc.invalidateQueries({ queryKey: ["surveys"] });
+      toast.success(t("regenerateQrDone"));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("somethingWrongTitle"));
+    } finally {
+      setRegenerating(false);
+      setConfirmOpen(false);
+    }
+  }
+
   return (
     <>
       <div className="rounded-surface border border-border/70 bg-card p-5 sm:p-6">
-        <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start sm:gap-8">
+        <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-stretch sm:gap-8">
           {/* QR is the hero — large, framed, with a scan caption. */}
-          <div className="shrink-0 text-center">
-            <div className="grid place-items-center rounded-surface border border-border/70 bg-white p-4 shadow-sm">
+          <div className="flex shrink-0 flex-col items-center text-center">
+            <motion.div
+              key={survey.slug}
+              initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", stiffness: 320, damping: 24 }}
+              className="grid place-items-center rounded-surface border border-border/70 bg-white p-4 shadow-sm"
+            >
               <QRCodeSVG value={url} size={196} level="M" bgColor="transparent" fgColor={QR_SCREEN_FG} />
-            </div>
+            </motion.div>
             <p className="mt-2.5 t-caption font-medium text-muted-foreground">{t("scanToOpen")}</p>
             {/* Rendered off-screen at print resolution purely as the source for
                 the PNG download — the display copy would pixelate on a poster. */}
@@ -68,57 +100,33 @@ export function SurveyShareCard({ survey, mode }: { survey: Survey; mode: LangMo
             </div>
           </div>
 
-          <div className="min-w-0 flex-1 self-stretch">
+          <div className="flex min-w-0 flex-1 flex-col">
             <div className="eyebrow">{t("surveyLink")}</div>
             <div className="mt-1.5 break-all rounded-field border border-border/60 bg-muted/60 px-3 py-2.5 font-mono text-xs sm:text-sm">
               {url}
             </div>
 
-            {/* One consistent button size everywhere on the card, laid out on a
-                grid so every action is the same width — no scattered pills. */}
-            <div className="mt-3 grid grid-cols-2 gap-2">
+            {/* Six actions, one grid, every cell the same width and height. */}
+            <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-3">
               <Button onClick={copy} className="w-full">
                 {copied ? <Check strokeWidth={1.8} /> : <Copy strokeWidth={1.8} />}
                 {copied ? t("copied") : t("copyLink")}
               </Button>
+
               <Button variant="outline" asChild className="w-full">
                 <a href={url} target="_blank" rel="noreferrer">
                   <ExternalLink strokeWidth={1.8} />
                   {t("open")}
                 </a>
               </Button>
-            </div>
 
-            <div className="mt-5 eyebrow">{t("shareVia")}</div>
-            <div className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-3">
-              <Button variant="outline" asChild className="w-full">
-                <a href={whatsappHref(message)} target="_blank" rel="noreferrer">
-                  <MessageCircle strokeWidth={1.8} />
-                  {t("shareWhatsApp")}
-                </a>
-              </Button>
-              <Button variant="outline" asChild className="w-full">
-                <a href={smsHref(message)}>
-                  <Smartphone strokeWidth={1.8} />
-                  {t("shareSms")}
-                </a>
-              </Button>
               <Button variant="outline" asChild className="w-full">
                 <a href={mailtoHref(title, message)}>
                   <Mail strokeWidth={1.8} />
                   {t("shareEmail")}
                 </a>
               </Button>
-              {canNativeShare() && (
-                <Button variant="outline" onClick={() => void nativeShare(title, t("shareMessage"), url)} className="w-full">
-                  <Share2 strokeWidth={1.8} />
-                  {t("shareSurvey")}
-                </Button>
-              )}
-            </div>
 
-            <div className="mt-5 eyebrow">QR</div>
-            <div className="mt-1.5 grid grid-cols-2 gap-2">
               <Button
                 variant="outline"
                 className="w-full"
@@ -131,26 +139,57 @@ export function SurveyShareCard({ survey, mode }: { survey: Survey; mode: LangMo
                 <Download strokeWidth={1.8} />
                 {t("downloadQr")}
               </Button>
+
               <Button variant="outline" onClick={printSheetOnly} className="w-full">
                 <Printer strokeWidth={1.8} />
                 {t("printQr")}
               </Button>
+
+              <Button variant="outline" onClick={() => setConfirmOpen(true)} className="w-full">
+                <RefreshCw strokeWidth={1.8} />
+                {t("regenerateQr")}
+              </Button>
             </div>
+
+            <p className="mt-3 t-caption text-muted-foreground">{t("noLoginNeeded")}</p>
           </div>
         </div>
       </div>
+
+      {/* Rotating the slug retires every poster already in the field, so it
+          asks first and names that consequence rather than implying it. */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("regenerateQr")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("regenerateQrConfirm")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={regenerating}>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void regenerate();
+              }}
+              disabled={regenerating}
+              className="gap-2"
+            >
+              {regenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" strokeWidth={1.8} />}
+              {t("regenerateQr")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* The poster. Sized and worded to be taped to a wall and scanned by
           someone standing in front of it. */}
       <PrintSheet>
         <div className="flex min-h-screen flex-col items-center px-16 py-16 text-center">
           <div className="flex items-center gap-3">
-            <div className="grid h-12 w-12 place-items-center rounded-lg bg-neutral-900">
-              <Shield className="h-7 w-7 text-white" strokeWidth={1.6} />
-            </div>
+            <Logo size={48} />
             <div className="text-left">
               <div className="text-base font-semibold">{t("appName")}</div>
-              <div className="text-xs text-neutral-600">{t("govOf")}</div>
+              <div className="text-xs text-neutral-600">{t("orgLine")}</div>
             </div>
           </div>
 
