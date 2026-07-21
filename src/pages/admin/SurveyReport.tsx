@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { PrintBarList } from "@/components/analytics/PrintBarList";
 import { QuestionTypeIcon } from "@/components/survey/QuestionTypeIcon";
 import { getSurveyWithQuestions, type Survey, type SurveyQuestion } from "@/lib/surveys";
-import { getQuestionBreakdown, getResponsesForExport, getSurveyStats, resolveReportRange, averageScore, type SurveyStats, type ValueCount } from "@/lib/analytics";
+import { getQuestionBreakdown, getResponseCount, getSurveyStats, resolveReportRange, averageScore, type SurveyStats, type ValueCount } from "@/lib/analytics";
 
 export default function SurveyReport() {
   const { id } = useParams();
@@ -19,25 +19,42 @@ export default function SurveyReport() {
   const [breakdowns, setBreakdowns] = useState<Record<string, ValueCount[]> | null>(null);
   const printed = useRef(false);
 
+  const [loadError, setLoadError] = useState(false);
+
   useEffect(() => {
     if (!id) return;
+    let cancelled = false;
+    setLoadError(false);
     (async () => {
       const data = await getSurveyWithQuestions(id);
-      if (!data) return;
+      if (cancelled) return;
+      if (!data) {
+        setLoadError(true);
+        return;
+      }
       setSurvey(data.survey);
       setQuestions(data.questions);
 
-      const [s, exportRows] = await Promise.all([getSurveyStats(id), getResponsesForExport(id, data.questions, since)]);
+      // A count query for the period total — never pull the whole dataset just
+      // to display a number.
+      const [s, count] = await Promise.all([getSurveyStats(id), getResponseCount(id, since)]);
+      if (cancelled) return;
       setStats(s);
-      setPeriodTotal(exportRows.length);
+      setPeriodTotal(count);
 
       const entries = await Promise.all(
         data.questions
           .filter((q) => q.kind !== "short_text" && q.kind !== "long_text")
           .map(async (q) => [q.id, await getQuestionBreakdown(q, since)] as const),
       );
+      if (cancelled) return;
       setBreakdowns(Object.fromEntries(entries));
-    })();
+    })().catch(() => {
+      if (!cancelled) setLoadError(true);
+    });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, params]);
 
@@ -49,6 +66,17 @@ export default function SurveyReport() {
       setTimeout(() => window.print(), 400);
     }
   }, [ready]);
+
+  if (loadError) {
+    return (
+      <div className="grid min-h-dvh place-items-center px-6 text-center">
+        <div className="max-w-sm">
+          <p className="t-section">Report unavailable</p>
+          <p className="mt-2 t-body text-muted-foreground">This survey couldn't be loaded — it may have been deleted. Close this tab and try again from Reports.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!ready) {
     return <div className="min-h-dvh grid place-items-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" strokeWidth={1.5} /></div>;
@@ -71,8 +99,8 @@ export default function SurveyReport() {
             <Shield className="h-6 w-6 text-primary-foreground" strokeWidth={1.5} />
           </div>
           <div>
-            <div className="t-body font-semibold">AP Police Family Assessment Platform</div>
-            <div className="t-caption text-muted-foreground">Government of Andhra Pradesh · Department of Police</div>
+            <div className="t-body font-semibold">Jeevana Insight</div>
+            <div className="t-caption text-muted-foreground">Family Assessment Research Platform</div>
           </div>
         </div>
         <div className="text-right t-caption text-muted-foreground">
@@ -135,7 +163,7 @@ export default function SurveyReport() {
       </div>
 
       <footer className="report-section mt-8 pt-4 border-t border-border t-caption text-muted-foreground text-center">
-        Official report · AP Police Family Assessment Platform · For authorised use only
+        Research report · Jeevana Insight · For authorised use only
       </footer>
     </div>
   );

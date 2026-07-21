@@ -10,7 +10,7 @@ const HEADER_FONT = "FFFFFFFF";
 export async function buildResponsesWorkbook(survey: Survey, questions: SurveyQuestion[], rows: ExportResponseRow[]): Promise<Blob> {
   const { default: ExcelJS } = await import("exceljs");
   const wb = new ExcelJS.Workbook();
-  wb.creator = "AP Police Family Assessment Platform";
+  wb.creator = "Jeevana Insight";
   wb.created = new Date();
 
   const sheet = wb.addWorksheet("Responses", { views: [{ state: "frozen", ySplit: 1 }] });
@@ -55,13 +55,87 @@ export async function buildResponsesWorkbook(survey: Survey, questions: SurveyQu
   return new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }
 
+export interface SingleResponseExport {
+  referenceId: string;
+  surveyTitle: string;
+  submittedAt: string;
+  language: string;
+  completionPct: number;
+  /** Pre-formatted ("4m 12s" / "—") so the sheet reads the same as the inspector. */
+  duration: string;
+  answers: { prompt: string; answer: string | null }[];
+}
+
+/**
+ * One family's submission as a workbook — the artefact an administrator attaches
+ * to a case note after a parent quotes their reference id on the phone. Question
+ * and answer down two columns, with the identifying facts in a header block so
+ * the sheet still means something once it is detached from the console.
+ */
+export async function buildSingleResponseWorkbook(input: SingleResponseExport): Promise<Blob> {
+  const { default: ExcelJS } = await import("exceljs");
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "AP Police Family Assessment Platform";
+  wb.created = new Date();
+
+  const sheet = wb.addWorksheet("Response");
+  sheet.columns = [
+    { key: "label", width: 62 },
+    { key: "value", width: 46 },
+  ];
+
+  const title = sheet.addRow([`Response ${input.referenceId}`, ""]);
+  title.font = { bold: true, size: 14 };
+  sheet.mergeCells(title.number, 1, title.number, 2);
+
+  const meta: [string, string][] = [
+    ["Survey", input.surveyTitle],
+    ["Submitted", new Date(input.submittedAt).toLocaleString()],
+    ["Language", input.language === "te" ? "Telugu" : "English"],
+    ["Completion", `${input.completionPct}%`],
+    ["Time taken", input.duration],
+  ];
+  for (const [label, value] of meta) {
+    const row = sheet.addRow([label, value]);
+    row.getCell(1).font = { bold: true };
+  }
+
+  sheet.addRow([]);
+
+  const header = sheet.addRow(["Question", "Answer"]);
+  header.height = 22;
+  header.eachCell((cell) => {
+    cell.font = { bold: true, color: { argb: HEADER_FONT } };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: HEADER_FILL } };
+    cell.alignment = { vertical: "middle", wrapText: true };
+  });
+
+  for (const a of input.answers) {
+    const row = sheet.addRow([a.prompt, a.answer ?? "Not answered"]);
+    row.alignment = { vertical: "top", wrapText: true };
+    if (!a.answer) row.getCell(2).font = { italic: true, color: { argb: "FF9A9AA3" } };
+  }
+
+  const buffer = await wb.xlsx.writeBuffer();
+  return new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+}
+
 export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  a.rel = "noopener";
+  // Some browsers (notably Firefox) require the anchor to be in the document for
+  // a programmatic click to fire, and revoking the URL synchronously after
+  // click() can cancel the download of a large blob before it starts.
+  a.style.display = "none";
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 0);
 }
 
 export function slugifyFilename(title: string): string {

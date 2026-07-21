@@ -26,11 +26,13 @@ const emailSchema = z.string().trim().email();
 function describeAuthError(message: string): string {
   const m = message.toLowerCase();
   if (m.includes("email not confirmed"))
-    return 'This account’s email hasn’t been confirmed. In Supabase, turn off "Confirm email" under Authentication → Providers → Email, or confirm the user manually, then try again.';
-  if (m.includes("invalid login credentials"))
-    return "No account matches that email and password. Double-check the email is exactly right and the user exists in Supabase Authentication → Users.";
-  if (m.includes("user not found")) return "No account with that email exists yet.";
-  return message;
+    return "This account hasn't been confirmed yet. Please contact your administrator.";
+  // One message for both a wrong password and a non-existent account — telling
+  // them apart would let an attacker enumerate which emails are registered. No
+  // backend/provider details are exposed either.
+  if (m.includes("invalid login credentials") || m.includes("user not found"))
+    return "The email or password is incorrect.";
+  return "Couldn't sign in right now. Please check your connection and try again.";
 }
 
 export default function Auth() {
@@ -96,7 +98,13 @@ export default function Auth() {
         <LangToggle />
       </div>
 
-      <div className="relative z-10 grid min-h-dvh grid-cols-1 lg:grid-cols-[2.9fr_minmax(460px,1.1fr)]">
+      {/* Column split: the editorial panel still leads, but only just. The card
+          column carries a 520px floor AND a fixed 45% of the free space, so it is
+          never the column that gets squeezed: it holds that 45% identically at
+          1280, 1440, 1600 and 1920 instead of collapsing toward a narrow rail
+          while the illustration keeps growing. Below 1156px the 520px floor takes
+          over and the editorial panel — the decorative half — gives way instead. */}
+      <div className="relative z-10 grid min-h-dvh grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(520px,0.9fr)]">
         {/* ══ LEFT · editorial panel + floating sculpture — desktop only ══ */}
         <aside className="relative hidden overflow-hidden bg-[#FAFAFD] lg:flex lg:h-dvh lg:flex-col lg:border-r lg:border-[rgba(94,67,243,0.08)] lg:p-12 xl:p-16">
           {/* Ambient purple wash — the warm light the whole panel sits in */}
@@ -173,12 +181,18 @@ export default function Auth() {
         </aside>
 
         {/* ══ RIGHT · the sign-in card ═══════════════════════════════════════ */}
-        <main className="relative flex min-h-dvh flex-col items-center justify-center px-4 py-8 sm:px-6">
+        {/* Below lg the vertical padding is symmetric on purpose: the top band is
+            deeper than the floating LangToggle's footprint (top-4 + 36px = 52px,
+            sm:top-8 + 36px = 68px) so the compact brand lockup can never collide
+            with it even when a short viewport pushes the card up against the top,
+            and the matching bottom band keeps the card optically centred. From lg
+            the lockup is hidden, so the column can breathe closer to the edges. */}
+        <main className="relative flex min-h-dvh w-full min-w-0 flex-col items-center justify-center px-4 py-16 sm:px-6 sm:py-24 lg:px-10 lg:py-12 xl:px-14">
           <motion.div
             initial={reduce ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.99 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.7, ease: EASE, delay: 0.1 }}
-            className="w-full max-w-[420px]"
+            className="w-full max-w-[472px]"
           >
             {/* Compact brand — mobile/tablet only, since the banner is gone there. */}
             <div className="mb-4 flex items-center justify-center gap-2.5 sm:mb-6 lg:hidden">

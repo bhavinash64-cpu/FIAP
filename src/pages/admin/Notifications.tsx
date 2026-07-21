@@ -190,7 +190,7 @@ export default function Notifications() {
       <div className="w-full max-w-[1440px]">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <div>
-            <div className="eyebrow text-primary">{t("navGroupGovernance")}</div>
+            <div className="eyebrow text-primary">{t("navGroupSystem")}</div>
             <h1 className="mt-1.5 t-title">Activity</h1>
           </div>
           {unreadCount > 0 && (

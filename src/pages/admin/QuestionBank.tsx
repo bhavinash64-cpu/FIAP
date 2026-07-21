@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { DndContext, closestCenter, PointerSensor, TouchSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
@@ -15,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { EmptyLibraryArt, EmptyState } from "@/components/admin/EmptyState";
 import { BankItemCard } from "@/components/bank/BankItemCard";
 import { QuestionTypeIcon } from "@/components/survey/QuestionTypeIcon";
 import {
@@ -47,8 +49,14 @@ export default function QuestionBank() {
   // Prompt/option typing is debounced per row so a keystroke is not a round-trip.
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
+  const qc = useQueryClient();
+
   useEffect(() => { void load(); }, []);
   useEffect(() => () => { Object.values(timers.current).forEach(clearTimeout); }, []);
+  // This page edits the bank through its own local state; the shared
+  // ["question-bank"] cache (read by the dashboard and templates) is refreshed
+  // on the way out so those surfaces never show pre-edit counts.
+  useEffect(() => () => { void qc.invalidateQueries({ queryKey: ["question-bank"] }); }, [qc]);
 
   async function load() {
     try {
@@ -555,38 +563,42 @@ function InstrumentRow({
   const incomplete = countIncomplete(inst);
   return (
     <motion.div variants={staggerChild} className={cn("flex items-stretch", active ? "bg-primary-tint" : "hover:bg-sunken")}>
+      {/* Icon, name, and a Modified badge — nothing else. The item count moved
+          to the detail pane: repeated on every row it was pure noise, and it
+          never answered a question anyone was asking of the list. The
+          unfinished-question warning survives as a dot on the icon, because
+          that one is a data-integrity signal rather than decoration. */}
       <button
         type="button"
         onClick={onSelect}
-        className="flex min-w-0 flex-1 items-start gap-3 px-4 py-4 text-left transition-colors sm:px-5"
+        className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition-colors sm:px-5"
       >
-        <span
-          className={cn(
-            "grid h-9 w-9 shrink-0 place-items-center rounded-control transition-colors",
-            active ? "bg-primary text-primary-foreground" : "bg-sunken text-muted-foreground",
-          )}
-        >
-          <Layers className="h-4 w-4" strokeWidth={1.5} />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate t-card">{inst.name_en}</span>
-          {inst.blurb_en && <span className="mt-1 block truncate t-caption text-muted-foreground">{inst.blurb_en}</span>}
-          <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <Badge variant="secondary" className="tabular-nums">{inst.items.length}</Badge>
-            {!inst.is_builtin && <span className="t-caption text-tertiary">Custom</span>}
-            {/* Surfaced on the list row so an unfinished question is findable
-                without opening every instrument. */}
-            {incomplete > 0 && (
-              <span className="inline-flex items-center gap-1 t-caption font-medium text-destructive">
-                <AlertCircle className="h-3 w-3" /> {incomplete} incomplete
-              </span>
+        <span className="relative shrink-0">
+          <span
+            className={cn(
+              "grid h-9 w-9 place-items-center rounded-control transition-colors",
+              active ? "bg-primary text-primary-foreground" : "bg-sunken text-muted-foreground",
             )}
-            {modified && (
-              <span className="inline-flex items-center gap-1 t-caption text-warning">
-                <ShieldAlert className="h-3 w-3" /> Modified
-              </span>
-            )}
+          >
+            <Layers className="h-4 w-4" strokeWidth={1.5} />
           </span>
+          {incomplete > 0 && (
+            <span
+              className="absolute -right-0.5 -top-0.5 grid h-3.5 w-3.5 place-items-center rounded-pill bg-destructive ring-2 ring-card"
+              title={`${incomplete} question${incomplete === 1 ? "" : "s"} need attention`}
+              aria-label={`${incomplete} question${incomplete === 1 ? "" : "s"} need attention`}
+            >
+              <AlertCircle className="h-2.5 w-2.5 text-destructive-foreground" strokeWidth={3} />
+            </span>
+          )}
+        </span>
+        <span className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="truncate t-card">{inst.name_en}</span>
+          {modified && (
+            <Badge variant="outline" className="shrink-0 gap-1 border-warning/40 px-1.5 text-warning">
+              <ShieldAlert className="h-3 w-3" /> Modified
+            </Badge>
+          )}
         </span>
       </button>
 
@@ -679,33 +691,36 @@ function EmptyBank({ onCreate }: { onCreate: () => void }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: easeOut }}
-      className="mt-8 flex flex-col items-center rounded-surface border border-border bg-card px-6 py-16 text-center shadow-[var(--highlight-top),var(--shadow-sm)] sm:py-24"
+      className="mt-8 rounded-surface border border-border bg-card shadow-[var(--highlight-top),var(--shadow-sm)]"
     >
-      <div className="grid h-16 w-16 place-items-center rounded-pill bg-accent-tint">
-        <Layers className="h-6 w-6 text-muted-foreground" strokeWidth={1.5} />
-      </div>
-      <h2 className="mt-6 t-section">The bank is empty</h2>
-      <p className="mx-auto mt-2 max-w-sm t-body text-muted-foreground">
-        Create an instrument to group your questions, then add questions to it.
-      </p>
-      <Button onClick={onCreate} className="mt-6">
-        <Plus className="h-4 w-4" strokeWidth={1.5} /> New instrument
-      </Button>
+      <EmptyState
+        illustration={<EmptyLibraryArt />}
+        title="No custom instruments yet."
+        description="An instrument groups the questions of one assessment. Create one, then add questions or import them from a PDF."
+        primaryAction={
+          <Button onClick={onCreate}>
+            <Plus className="h-4 w-4" strokeWidth={1.5} /> New instrument
+          </Button>
+        }
+      />
     </motion.div>
   );
 }
 
 function EmptyInstrument({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="flex flex-col items-center rounded-field border border-dashed border-border px-6 py-12 text-center">
-      <div className="grid h-12 w-12 place-items-center rounded-pill bg-accent-tint">
-        <FileQuestion className="h-5 w-5 text-muted-foreground" strokeWidth={1.5} />
-      </div>
-      <p className="mt-4 t-card">No questions yet</p>
-      <p className="mt-1 t-caption text-muted-foreground">Add the first question to this instrument.</p>
-      <Button size="sm" onClick={onAdd} className="mt-4">
-        <Plus className="h-3.5 w-3.5" /> Add question
-      </Button>
+    <div className="rounded-field border border-dashed border-border">
+      <EmptyState
+        compact
+        icon={FileQuestion}
+        title="No questions yet"
+        description="Add the first question to this instrument."
+        primaryAction={
+          <Button size="sm" onClick={onAdd}>
+            <Plus className="h-3.5 w-3.5" /> Add question
+          </Button>
+        }
+      />
     </div>
   );
 }

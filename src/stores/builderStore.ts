@@ -101,7 +101,9 @@ function endSave(err?: unknown) {
     toast.error("Could not save. Check your connection — your edit is still on screen.");
     return;
   }
-  if (inFlight === 0) useBuilderStore.setState({ saveState: "saved" });
+  // "Saved" only when nothing is running AND nothing is still queued — otherwise
+  // a pending debounced keystroke would be misrepresented as already persisted.
+  if (inFlight === 0 && timers.size === 0) useBuilderStore.setState({ saveState: "saved" });
 }
 
 /** Debounce by key; the last write for a key wins. */
@@ -211,13 +213,13 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     // instant it's created and the click would look like it did nothing.
     if (selectFiltering(get())) set({ search: "", kindFilter: "all", requiredFilter: "all" });
 
-    const { order } = get();
-
-    // Insert position: right after `afterId` when duplicating//adding inline,
-    // otherwise at the end of the target section.
-    let insertAt = order.length;
+    // Insert position for the DB order_index, from the current order. The final
+    // list order is recomputed from live state AFTER the await (see below), so
+    // two rapid adds can't clobber each other.
+    const orderNow = get().order;
+    let insertAt = orderNow.length;
     if (afterId) {
-      const i = order.indexOf(afterId);
+      const i = orderNow.indexOf(afterId);
       if (i !== -1) insertAt = i + 1;
     }
 
@@ -230,13 +232,25 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       return null;
     }
 
-    const nextOrder = [...order];
-    nextOrder.splice(insertAt, 0, created.id);
-    set((s) => ({ byId: { ...s.byId, [created.id]: created }, order: nextOrder, focusedId: created.id }));
+    // Splice into the CURRENT order inside the updater — never a copy captured
+    // before the await — so concurrent adds each preserve the other's insert.
+    set((s) => {
+      const cur = s.order;
+      let at = cur.length;
+      if (afterId) {
+        const i = cur.indexOf(afterId);
+        if (i !== -1) at = i + 1;
+      }
+      const nextOrder = cur.slice();
+      nextOrder.splice(at, 0, created.id);
+      return { byId: { ...s.byId, [created.id]: created }, order: nextOrder, focusedId: created.id };
+    });
 
-    // Positions after the insert shifted — persist the whole list once.
+    // Persist the whole list once; the reorder rewrites every order_index, so any
+    // transient index collision from concurrent inserts is corrected here.
     try {
-      await reorderQuestions(nextOrder.map((id) => ({ id, section_id: get().byId[id]?.section_id ?? null })));
+      const finalOrder = get().order;
+      await reorderQuestions(finalOrder.map((id) => ({ id, section_id: get().byId[id]?.section_id ?? null })));
       endSave();
     } catch (e) {
       endSave(e);
@@ -277,12 +291,18 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       endSave(e);
       return;
     }
-    const order = [...get().order];
-    const at = order.indexOf(id) + 1;
-    order.splice(at, 0, copy.id);
-    set((s) => ({ byId: { ...s.byId, [copy.id]: copy }, order, focusedId: copy.id }));
+    // Splice into live state inside the updater, so a concurrent add/duplicate
+    // can't overwrite this insert with a stale order copy.
+    set((s) => {
+      const cur = s.order;
+      const at = cur.indexOf(id) + 1;
+      const nextOrder = cur.slice();
+      nextOrder.splice(at, 0, copy.id);
+      return { byId: { ...s.byId, [copy.id]: copy }, order: nextOrder, focusedId: copy.id };
+    });
     try {
-      await reorderQuestions(order.map((qid) => ({ id: qid, section_id: get().byId[qid]?.section_id ?? null })));
+      const finalOrder = get().order;
+      await reorderQuestions(finalOrder.map((qid) => ({ id: qid, section_id: get().byId[qid]?.section_id ?? null })));
       endSave();
     } catch (e) {
       endSave(e);

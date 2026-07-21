@@ -1,16 +1,25 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowLeft, ArrowRight, AlertCircle, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AssessmentShell, AssessmentFooter } from "@/components/assessment/AssessmentShell";
 import { AnswerCards } from "@/components/assessment/AnswerCards";
 import { VoiceControl } from "@/components/assessment/VoiceControl";
+import { Encouragement } from "@/components/assessment/Encouragement";
 import { renderBilingual, useT, chromeLang, type LangMode } from "@/lib/i18n";
-import { isAnswered, minutesFromSeconds, remainingSeconds } from "@/lib/assessmentSession";
+import { categorizeQuestion, categoryClass } from "@/lib/questionCategory";
+import { completionRatio, isAnswered, minutesFromSeconds, remainingSeconds, type AnswerMeta } from "@/lib/assessmentSession";
 import type { AnswerValue, SurveyQuestion } from "@/lib/surveys";
 import { cn } from "@/lib/utils";
 
 const EASE = [0.33, 1, 0.68, 1] as const;
+
+/**
+ * How long a tapped answer is allowed to sit and be seen before the screen
+ * moves on. Matches --dur-slow: long enough that the selection registers as
+ * confirmed, short enough that it never feels like the app is thinking.
+ */
+const SELECTION_SETTLE_MS = 380;
 
 /** The full-sentence anchors, spoken after the prompt so listeners hear their choices. */
 const LIKERT_SPOKEN: Record<"en" | "te", string[]> = {
@@ -45,20 +54,30 @@ export function QuestionStage({
   questions,
   index,
   answers,
+  meta,
   mode,
   onAnswer,
   onNavigate,
   onBackToIntro,
   onReview,
+  onSkip,
+  onDwell,
+  onVoice,
 }: {
   questions: SurveyQuestion[];
   index: number;
   answers: Record<string, AnswerValue>;
+  meta: Record<string, AnswerMeta>;
   mode: LangMode;
   onAnswer: (id: string, v: AnswerValue) => void;
   onNavigate: (nextIndex: number) => void;
   onBackToIntro: () => void;
   onReview: () => void;
+  /** Explicitly moved past without answering. */
+  onSkip: (id: string) => void;
+  /** Seconds this question was on screen, reported when leaving it. */
+  onDwell: (id: string, seconds: number) => void;
+  onVoice: (id: string) => void;
 }) {
   const t = useT();
   const reduce = useReducedMotion();
@@ -66,22 +85,44 @@ export function QuestionStage({
   const total = questions.length;
   const value = answers[question.id] ?? null;
   const answered = isAnswered(value);
+  const wasSkipped = !!meta[question.id]?.skipped && !answered;
 
-  const [error, setError] = useState(false);
   /** +1 forward, -1 back — drives which side the new question slides in from. */
   const [direction, setDirection] = useState(1);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  /** The pending tap-to-advance timer, so any manual navigation can cancel it. */
+  const commitTimer = useRef<number | null>(null);
 
-  const minutesLeft = useMemo(
-    () => minutesFromSeconds(remainingSeconds(questions, answers, index)),
-    [questions, answers, index],
-  );
-  const secondsLeft = useMemo(() => remainingSeconds(questions, answers, index), [questions, answers, index]);
+  function clearCommit() {
+    if (commitTimer.current !== null) {
+      window.clearTimeout(commitTimer.current);
+      commitTimer.current = null;
+    }
+  }
+  // Never let a scheduled auto-advance fire after the stage unmounts.
+  useEffect(() => () => clearCommit(), []);
 
-  // Clear a stale "please answer" the moment an answer arrives.
+  /**
+   * Time on this question, accumulated. The clock is per-question-id and flushes
+   * on the way out (including on unmount, which is how the last question's dwell
+   * reaches the review stage). Wall-clock rather than an interval: a respondent
+   * who backgrounds the tab mid-question should not have that counted as
+   * thinking time, so it is capped when reported.
+   */
+  const enteredAt = useRef<number>(Date.now());
+  const dwellRef = useRef(onDwell);
+  dwellRef.current = onDwell;
+
   useEffect(() => {
-    if (answered) setError(false);
-  }, [answered]);
+    const id = question.id;
+    enteredAt.current = Date.now();
+    return () => {
+      const seconds = Math.round((Date.now() - enteredAt.current) / 1000);
+      // 15 minutes on one item means the phone was put down, not that the
+      // question took that long to consider.
+      if (seconds > 0) dwellRef.current(id, Math.min(seconds, 900));
+    };
+  }, [question.id]);
 
   /**
    * Move focus to the new question. Without this the screen changes but a
@@ -89,33 +130,55 @@ export function QuestionStage({
    * question that no longer exists, and hears nothing about the new one.
    */
   useEffect(() => {
-    setError(false);
     window.scrollTo(0, 0);
     headingRef.current?.focus({ preventScroll: true });
   }, [question.id]);
 
-  function goNext() {
-    if (question.required && !answered) {
-      setError(true);
-      return;
-    }
+  const minutesLeft = useMemo(
+    () => minutesFromSeconds(remainingSeconds(questions, answers, index)),
+    [questions, answers, index],
+  );
+  const secondsLeft = useMemo(() => remainingSeconds(questions, answers, index), [questions, answers, index]);
+
+  const advance = useCallback(() => {
     setDirection(1);
     if (index >= total - 1) onReview();
     else onNavigate(index + 1);
-  }
+  }, [index, total, onNavigate, onReview]);
 
-  function goPrev() {
+  /**
+   * Nothing blocks. A required question that has not been answered is recorded
+   * as unanswered and surfaced again on the review screen, where the respondent
+   * can choose to fill it in or submit as-is. Refusing to advance would trap
+   * someone on an item they may have a real reason not to answer — on a
+   * well-being instrument that is how a whole session gets abandoned.
+   */
+  const goNext = useCallback(() => {
+    clearCommit();
+    advance();
+  }, [advance]);
+
+  const goPrev = useCallback(() => {
+    clearCommit();
     setDirection(-1);
     if (index === 0) onBackToIntro();
     else onNavigate(index - 1);
-  }
+  }, [index, onNavigate, onBackToIntro]);
 
-  // Arrow keys page through the assessment, digits pick an option. Both are
-  // suppressed while typing so a long-text answer isn't hijacked mid-word.
+  const skip = useCallback(() => {
+    clearCommit();
+    onSkip(question.id);
+    advance();
+  }, [advance, onSkip, question.id]);
+
+  // Arrow keys page through the assessment — but ONLY when focus is on the page
+  // itself, never when it sits on an interactive control. Otherwise an arrow
+  // press meant to move between answer options (role="radio") or nudge a
+  // Previous/Next button would silently jump to another question instead.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const el = e.target as HTMLElement | null;
-      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+      if (el && el.closest('input, textarea, select, button, a, [role="radio"], [role="checkbox"], [contenteditable="true"]')) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
       if (e.key === "ArrowRight") {
@@ -128,10 +191,21 @@ export function QuestionStage({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  });
+  }, [goNext, goPrev]);
 
   const prompt = renderBilingual(mode, question.prompt_en, question.prompt_te).primary;
-  const percent = total ? (index / total) * 100 : 0;
+
+  /**
+   * The bar measures answers given, not screens walked past.
+   *
+   * Position would be the easier number, but it lies in the one direction that
+   * matters here: skipping is encouraged, and a bar that advances on a skip
+   * tells a respondent they have completed work they have not. It also has to
+   * agree with the "estimated completion" figure the review screen shows, which
+   * is the same function.
+   */
+  const answeredRatio = useMemo(() => completionRatio(questions, answers), [questions, answers]);
+  const percent = Math.round(answeredRatio * 100);
 
   const remainingLabel =
     secondsLeft < 60
@@ -146,21 +220,32 @@ export function QuestionStage({
         <span className="t-caption font-semibold tabular-nums text-foreground">
           {t("questionXofY", { i: index + 1, n: total })}
         </span>
-        <span className="t-caption text-muted-foreground">{remainingLabel}</span>
+        {/* Percent and time are one quiet line: two separate readouts competing
+            for the same corner is what makes a progress strip feel like a
+            dashboard. Percent leads because it answers "how much is left of
+            me", which is the question actually being asked. */}
+        <span className="t-caption tabular-nums text-muted-foreground">
+          {t("percentComplete", { n: percent })}
+          <span aria-hidden className="mx-1.5 opacity-40">
+            ·
+          </span>
+          {remainingLabel}
+        </span>
       </div>
       <div
         className="mt-2 h-2 overflow-hidden rounded-pill bg-muted"
         role="progressbar"
         aria-valuemin={0}
-        aria-valuemax={total}
-        aria-valuenow={index + 1}
+        aria-valuemax={100}
+        aria-valuenow={percent}
+        aria-valuetext={t("percentComplete", { n: percent })}
         aria-label={t("questionXofY", { i: index + 1, n: total })}
       >
         <motion.div
           initial={false}
-          animate={{ width: `${percent}%` }}
+          animate={{ scaleX: percent / 100 }}
           transition={{ type: "spring", stiffness: 140, damping: 24 }}
-          className="brand-gradient h-full rounded-pill"
+          className="brand-gradient h-full w-full origin-left rounded-pill"
         />
       </div>
     </div>
@@ -168,15 +253,37 @@ export function QuestionStage({
 
   const footer = (
     <AssessmentFooter>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         <Button
           onClick={goPrev}
           variant="ghost"
-          className="h-[52px] gap-2 rounded-pill px-4 text-base text-muted-foreground sm:px-5"
+          size="lg"
+          shape="pill"
+          className="gap-2 px-3.5 text-muted-foreground sm:px-5"
         >
           <ArrowLeft className="h-[18px] w-[18px]" strokeWidth={1.8} />
-          {t("previous")}
+          <span className="hidden sm:inline">{t("previous")}</span>
         </Button>
+
+        {/* Skip is a peer of Next, not a hidden link. Making it visible is what
+            lets "you may leave anything blank" be true in practice rather than
+            just stated on the instructions screen. */}
+        {!answered && (
+          <Button
+            onClick={skip}
+            variant="ghost"
+            size="lg"
+            shape="pill"
+            aria-label={t("skipQuestion")}
+            className="min-w-0 gap-2 px-3.5 text-muted-foreground sm:px-4"
+          >
+            <SkipForward className="h-[18px] w-[18px]" strokeWidth={1.8} />
+            {/* Label only from 375px. At 320 the row is Previous + Skip + Next,
+                and "ప్రస్తుతానికి దాటవేయండి" is three times the English width —
+                keeping it would push Next off the screen. */}
+            <span className="hidden min-w-0 truncate xs:inline">{t("skipQuestion")}</span>
+          </Button>
+        )}
 
         {answered && (
           <span className="hidden items-center gap-1.5 t-caption text-success sm:inline-flex" aria-live="polite">
@@ -185,7 +292,7 @@ export function QuestionStage({
           </span>
         )}
 
-        <Button onClick={goNext} className="ml-auto h-[52px] min-w-[132px] gap-2 rounded-pill px-6 text-base">
+        <Button onClick={goNext} size="lg" shape="pill" className="ml-auto min-w-[112px] gap-2 px-5 sm:min-w-[132px] sm:px-6">
           {index >= total - 1 ? t("goToReview") : t("next")}
           <ArrowRight className="h-[18px] w-[18px]" strokeWidth={2} />
         </Button>
@@ -196,27 +303,44 @@ export function QuestionStage({
   return (
     <AssessmentShell progress={progress} footer={footer}>
       {/*
+        The subject's ambient wash. Rendered here rather than inside the
+        animated block below because it is `position: fixed` — nesting it under
+        framer-motion's transform would anchor it to that element instead of the
+        viewport. Purely decorative, so it is hidden from assistive tech.
+      */}
+      <div aria-hidden className={cn("atmo-wash", categoryClass(categorizeQuestion(question)))} />
+
+      {/*
+        Outside the keyed block on purpose. Encouragement remembers which
+        moments it has already spent in a ref; mounting it inside a subtree that
+        remounts on every question would reset that memory each time, and paging
+        back across the midpoint would replay the message.
+      */}
+      <Encouragement index={index} total={total} />
+
+      {/*
         Keyed remount instead of AnimatePresence. `mode="wait"` would hold the
         incoming question back until the outgoing one finished animating out,
         which is exactly the lag this redesign is meant to remove. Remounting on
         the id swaps the DOM immediately and the entry animation rides on top.
       */}
       <motion.div
+        className="relative"
         key={question.id}
         initial={reduce ? { opacity: 0 } : { opacity: 0, x: direction * 24 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.24, ease: EASE }}
       >
-        <h1
-          ref={headingRef}
-          tabIndex={-1}
-          className="t-question text-balance outline-none"
-        >
+        <h1 ref={headingRef} tabIndex={-1} className="t-question text-balance outline-none">
           {prompt}
         </h1>
 
         <div className="mt-5">
-          <VoiceControl text={narrationText(question, mode, t)} resetKey={question.id} />
+          <VoiceControl
+            text={narrationText(question, mode, t)}
+            resetKey={question.id}
+            onSpoken={() => onVoice(question.id)}
+          />
         </div>
 
         <div className="mt-7">
@@ -227,20 +351,25 @@ export function QuestionStage({
             onChange={(v) => onAnswer(question.id, v)}
             onCommit={() => {
               // Give the selection a beat to register visually, then move on.
-              // Only fires on a first answer, never on a correction.
-              window.setTimeout(() => {
-                setDirection(1);
-                if (index >= total - 1) onReview();
-                else onNavigate(index + 1);
-              }, 420);
+              // Only fires on a first answer, never on a correction. Held in a
+              // ref so a manual Prev/Next within the window cancels it.
+              clearCommit();
+              if (reduce) {
+                advance();
+                return;
+              }
+              commitTimer.current = window.setTimeout(() => {
+                commitTimer.current = null;
+                advance();
+              }, SELECTION_SETTLE_MS);
             }}
           />
         </div>
 
-        {error && (
-          <p role="alert" className={cn("mt-4 flex items-center gap-2 t-body font-medium text-destructive")}>
-            <AlertCircle className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} />
-            {t("requiredAnswer")}
+        {wasSkipped && (
+          <p className={cn("mt-4 flex items-center gap-2 t-caption text-muted-foreground")}>
+            <SkipForward className="h-4 w-4 shrink-0" strokeWidth={1.8} />
+            {t("skippedNote")}
           </p>
         )}
       </motion.div>

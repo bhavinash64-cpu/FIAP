@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "framer-motion";
 import { Plus, FileQuestion, Users, CalendarDays, Trash2, BarChart3, ArrowUpRight } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -10,7 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/survey/StatusBadge";
-import { createSurvey, deleteSurvey, listSurveys, type SurveyWithCounts } from "@/lib/surveys";
+import { PageContainer, PageHeader } from "@/components/admin/PageContainer";
+import { EmptyState, EmptySurveyArt } from "@/components/admin/EmptyState";
+import { createSurvey, deleteSurvey, listSurveys } from "@/lib/surveys";
 import { useLangMode } from "@/lib/i18n";
 import { staggerParent, staggerChild, easeOut } from "@/lib/motion";
 import { toast } from "sonner";
@@ -21,17 +23,14 @@ export default function SurveyList() {
   const mode = useLangMode();
   const te = mode === "te";
   const reduceMotion = useReducedMotion();
-  const [surveys, setSurveys] = useState<SurveyWithCounts[] | null>(null);
+  // Shared ["surveys"] cache — one source of truth with the dashboard, reports
+  // and QR pages, so a create/delete here shows everywhere without a divergent
+  // second fetch.
+  const { data: surveys, isPending } = useQuery({ queryKey: ["surveys"], queryFn: listSurveys });
   const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ title: "", description: "" });
   const [deleteId, setDeleteId] = useState<string | null>(null);
-
-  useEffect(() => { load(); }, []);
-
-  async function load() {
-    setSurveys(await listSurveys());
-  }
 
   function openCreate() {
     setForm({ title: "", description: "" });
@@ -70,44 +69,50 @@ export default function SurveyList() {
       qc.invalidateQueries({ queryKey: ["surveys"] });
       toast.success("Survey deleted");
       setDeleteId(null);
-      load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not delete survey");
     }
   }
 
   return (
-    <div className="w-full px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="eyebrow text-primary">Studio</div>
-          <h1 className="t-title mt-2">Surveys</h1>
-          <p className="mt-2 max-w-xl t-body text-muted-foreground">Create, publish and track every assessment. Share a link — respondents answer with no login.</p>
-        </div>
-        <Button onClick={openCreate} className="shrink-0">
-          <Plus className="h-4 w-4" strokeWidth={1.5} /> New survey
-        </Button>
-      </header>
+    <PageContainer>
+      <PageHeader
+        eyebrow="Studio"
+        title="Surveys"
+        subtitle="Create, publish and track every assessment. Share a link — respondents answer with no login."
+        actions={
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4" strokeWidth={1.5} /> New survey
+          </Button>
+        }
+      />
 
-      {surveys === null ? (
-        <div className="mt-8 flex flex-col gap-4">
-          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-32 animate-pulse rounded-surface bg-muted/50" />)}
+      {isPending ? (
+        <div className="mt-6 flex flex-col gap-2.5">
+          {Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-[4.5rem] animate-pulse rounded-surface bg-muted/50" />)}
         </div>
-      ) : surveys.length === 0 ? (
+      ) : !surveys?.length ? (
         <motion.div
           initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, ease: easeOut }}
-          className="mt-8 flex flex-col items-center rounded-surface border border-border bg-card px-6 py-24 text-center shadow-[var(--highlight-top),var(--shadow-sm)]"
+          className="mt-6 rounded-surface border border-border bg-card shadow-[var(--highlight-top),var(--shadow-sm)]"
         >
-          <div className="grid h-16 w-16 place-items-center rounded-pill bg-accent-tint">
-            <FileQuestion className="h-6 w-6 text-muted-foreground" strokeWidth={1.5} />
-          </div>
-          <h2 className="mt-6 t-section">No surveys yet</h2>
-          <p className="mx-auto mt-2 max-w-sm t-body text-muted-foreground">Create your first survey to start collecting responses from the public.</p>
-          <Button onClick={openCreate} className="mt-6">
-            <Plus className="h-4 w-4" strokeWidth={1.5} /> New survey
-          </Button>
+          <EmptyState
+            illustration={<EmptySurveyArt />}
+            title="No surveys yet"
+            description="Create your first survey to start collecting responses from the public — or start from a standardised instrument in the Question Library."
+            primaryAction={
+              <Button onClick={openCreate}>
+                <Plus className="h-4 w-4" strokeWidth={1.5} /> New survey
+              </Button>
+            }
+            secondaryAction={
+              <Button asChild variant="outline">
+                <Link to="/app/question-bank">Browse Question Library</Link>
+              </Button>
+            }
+          />
         </motion.div>
       ) : (
         <motion.div variants={staggerParent} initial="hidden" animate="show" className="mt-6 flex flex-col gap-2.5">
@@ -173,7 +178,7 @@ export default function SurveyList() {
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 placeholder={te ? "కుటుంబ శ్రేయస్సు సర్వే" : "Family well-being survey"}
                 autoFocus
-                onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); }}
+                onKeyDown={(e) => { if (e.key === "Enter" && !saving) handleCreate(); }}
               />
             </div>
             <div className="space-y-2">
@@ -205,6 +210,6 @@ export default function SurveyList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </PageContainer>
   );
 }

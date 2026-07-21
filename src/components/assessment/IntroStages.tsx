@@ -114,17 +114,17 @@ export function WelcomeStage({
               <div className="t-card text-primary">{t("welcomeBack")}</div>
               <p className="mx-auto mt-1 max-w-md t-body text-muted-foreground">{t("resumeBody")}</p>
             </div>
-            <Button onClick={onResume} className="mt-4 h-14 w-full gap-2 rounded-pill text-base">
+            <Button onClick={onResume} size="xl" shape="pill" className="mt-4 w-full gap-2">
               {t("continueAssessment")}
               <ArrowRight className="h-[18px] w-[18px]" strokeWidth={2} />
             </Button>
-            <Button onClick={onStartOver} variant="ghost" className="mt-2 h-12 w-full rounded-pill text-base text-muted-foreground">
+            <Button onClick={onStartOver} variant="ghost" shape="pill" className="mt-2 w-full text-muted-foreground">
               <Undo2 className="h-[18px] w-[18px]" strokeWidth={1.8} />
               {t("startOver")}
             </Button>
           </div>
         ) : (
-          <Button onClick={onBegin} className="mt-8 h-14 w-full gap-2 rounded-pill text-base">
+          <Button onClick={onBegin} size="xl" shape="pill" className="mt-8 w-full gap-2">
             {t("beginAssessment")}
             <ArrowRight className="h-[18px] w-[18px]" strokeWidth={2} />
           </Button>
@@ -196,11 +196,11 @@ export function ConsentStage({ onAgree, onBack }: { onAgree: () => void; onBack:
 
       <Reveal delay={0.18}>
         <div className="mt-6 flex gap-3">
-          <Button onClick={onBack} variant="ghost" className="h-14 gap-2 rounded-pill px-5 text-base text-muted-foreground">
+          <Button onClick={onBack} variant="ghost" size="xl" shape="pill" className="gap-2 px-5 text-muted-foreground">
             <ArrowLeft className="h-[18px] w-[18px]" strokeWidth={1.8} />
             {t("back")}
           </Button>
-          <Button onClick={onAgree} disabled={!agreed} className="h-14 flex-1 gap-2 rounded-pill text-base">
+          <Button onClick={onAgree} disabled={!agreed} size="xl" shape="pill" className="flex-1 gap-2">
             {t("continue")}
             <ArrowRight className="h-[18px] w-[18px]" strokeWidth={2} />
           </Button>
@@ -243,11 +243,11 @@ export function InstructionsStage({ onStart, onBack }: { onStart: () => void; on
 
       <Reveal delay={0.12}>
         <div className="mt-8 flex gap-3">
-          <Button onClick={onBack} variant="ghost" className="h-14 gap-2 rounded-pill px-5 text-base text-muted-foreground">
+          <Button onClick={onBack} variant="ghost" size="xl" shape="pill" className="gap-2 px-5 text-muted-foreground">
             <ArrowLeft className="h-[18px] w-[18px]" strokeWidth={1.8} />
             {t("back")}
           </Button>
-          <Button onClick={onStart} className="h-14 flex-1 gap-2 rounded-pill text-base">
+          <Button onClick={onStart} size="xl" shape="pill" className="flex-1 gap-2">
             {t("startQuestions")}
             <ArrowRight className="h-[18px] w-[18px]" strokeWidth={2} />
           </Button>

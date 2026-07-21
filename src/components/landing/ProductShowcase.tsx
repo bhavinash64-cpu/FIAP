@@ -286,7 +286,7 @@ function AssessmentScreen() {
         <span className="grid h-6 w-6 place-items-center rounded-lg bg-primary text-[11px] font-bold text-primary-foreground">
           <Users className="h-3.5 w-3.5" strokeWidth={1.8} />
         </span>
-        <span className="text-[11px] font-semibold">AP Police · Family Assessment</span>
+        <span className="text-[11px] font-semibold">Jeevana Insight · Family Assessment</span>
         <span className="ml-auto flex overflow-hidden rounded-lg border border-border text-[9px] font-semibold">
           <span className="bg-primary px-1.5 py-0.5 text-primary-foreground">EN</span>
           <span className="px-1.5 py-0.5 text-muted-foreground">తెలుగు</span>

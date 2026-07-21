@@ -1,36 +1,65 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
-  ClipboardList,
-  Inbox,
   Activity,
-  Plus,
-  TrendingUp,
-  QrCode,
-  LayoutTemplate,
-  Library,
-  FileSearch,
+  ClipboardList,
+  Download,
   FileText,
+  Gauge,
+  Inbox,
+  Languages,
+  Plus,
+  QrCode,
+  TrendingUp,
+  Users,
   type LucideIcon,
 } from "lucide-react";
-import { Area, AreaChart, ResponsiveContainer, Tooltip, PieChart, Pie, Cell } from "recharts";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { listSurveys } from "@/lib/surveys";
-import { listBank } from "@/lib/questionBank";
+import { getSurveyResponseSummaries, listResponses } from "@/lib/responseExplorer";
+import {
+  buildCompletionStats,
+  buildLanguageBreakdown,
+  buildTrend,
+  formatDuration,
+  periodOverPeriod,
+  type TrendPeriod,
+} from "@/lib/reports";
 import { StatusBadge } from "@/components/survey/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { CountUp } from "@/components/CountUp";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageContainer } from "@/components/admin/PageContainer";
-import { staggerParent, staggerChild } from "@/lib/motion";
+import { MeterRow, SectionPanel } from "@/components/admin/SectionPanel";
+import { StatTile } from "@/components/admin/StatTile";
+import { staggerChild, staggerParent } from "@/lib/motion";
+import { cn } from "@/lib/utils";
 
-interface Resp {
-  id: string;
-  survey_id: string;
-  submitted_at: string;
-}
+/**
+ * The Dashboard: what is running, what arrived, and how it is going — in ONE
+ * screen.
+ *
+ * The constraint that shapes every decision below is that this page must fit a
+ * 1440x900 viewport with at most a nudge of scroll. A dashboard you have to
+ * scroll is a report, and the moment it needs scrolling people stop reading the
+ * bottom half, which is exactly where the previous version had put the two
+ * lists that answer "what just happened".
+ *
+ * So density comes from removing duplication, not from shrinking type:
+ *  - The old page drew the SAME 14-day series twice — once as a sparkline in
+ *    the hero tile and again as a full panel directly beneath it. One chart.
+ *  - Six quick-action cards became a single row of buttons. They are shortcuts
+ *    to places already in the sidebar; they do not need to be the largest
+ *    objects on the screen.
+ *  - The survey-status donut was a chart with three data points. It is three
+ *    numbers, so it is now three numbers.
+ * What that bought is the space to bring the analytics an administrator
+ * actually opens Reports for — trend, completion, timing, language mix — onto
+ * the first screen they see.
+ */
+
 interface AuditRow {
   action: string;
   created_at: string;
@@ -46,11 +75,27 @@ const ACTION_LABEL: Record<string, string> = {
   "question.import.pdf": "Questions imported from PDF",
   "question.import.voice": "Question added by voice",
   "bank.instrument.create": "Library instrument added",
-  "bank.instrument.delete": "Library instrument removed",
-  "bank.instrument.duplicate": "Library instrument duplicated",
   "bank.item.create": "Question added to library",
-  "bank.item.revert": "Question reverted",
+  "family_case.create": "Family case created",
+  "family_case.pin_regenerate": "PIN regenerated",
+  "family_case.link_regenerate": "Link regenerated",
+  "family_case.reopen": "Family case reopened",
 };
+
+const PERIODS: { value: TrendPeriod; label: string }[] = [
+  { value: "week", label: "7d" },
+  { value: "month", label: "30d" },
+  { value: "year", label: "12m" },
+];
+
+/** Shortcuts, not destinations — the sidebar already owns navigation. */
+const QUICK_ACTIONS: { to: string; label: string; icon: LucideIcon }[] = [
+  { to: "/app/surveys", label: "New survey", icon: Plus },
+  { to: "/app/families", label: "Families", icon: Users },
+  { to: "/app/qr", label: "Share & QR", icon: QrCode },
+  { to: "/app/responses", label: "Export", icon: Download },
+  { to: "/app/reports", label: "Reports", icon: FileText },
+];
 
 function relTime(iso: string): string {
   const s = Math.max(1, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
@@ -63,37 +108,37 @@ function relTime(iso: string): string {
   return d < 30 ? `${d}d ago` : new Date(iso).toLocaleDateString();
 }
 
-const QUICK_ACTIONS: { to: string; label: string; icon: LucideIcon }[] = [
-  { to: "/app/surveys", label: "New survey", icon: Plus },
-  { to: "/app/question-bank", label: "Question Library", icon: Library },
-  { to: "/app/qr", label: "Share & QR", icon: QrCode },
-  { to: "/app/response-explorer", label: "Responses", icon: FileSearch },
-  { to: "/app/analytics", label: "Analytics", icon: TrendingUp },
-  { to: "/app/reports", label: "Reports", icon: FileText },
-];
-
 export default function Overview() {
-  const { data: surveys = [], isPending: surveysPending } = useQuery({ queryKey: ["surveys"], queryFn: listSurveys });
-  const { data: bank = [] } = useQuery({ queryKey: ["question-bank"], queryFn: listBank });
-  const { data: responses = [] } = useQuery({
-    queryKey: ["overview-responses"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("survey_responses")
-        .select("id, survey_id, submitted_at")
-        .order("submitted_at", { ascending: false })
-        .limit(500);
-      return (data ?? []) as Resp[];
-    },
+  const [period, setPeriod] = useState<TrendPeriod>("month");
+
+  const { data: surveys = [], isPending: surveysPending } = useQuery({
+    queryKey: ["surveys"],
+    queryFn: listSurveys,
   });
+
+  // The same ["all-responses"] cache the Responses workspace and Reports read,
+  // so moving between them is instant. An errored fetch must surface as an
+  // error — rendering it as "0 responses" reads as a healthy but empty account.
+  const {
+    data: responses = [],
+    isError: responsesError,
+    isPending: responsesPending,
+  } = useQuery({ queryKey: ["all-responses"], queryFn: listResponses });
+
+  const { data: summaries = [] } = useQuery({
+    queryKey: ["survey-response-summaries"],
+    queryFn: getSurveyResponseSummaries,
+  });
+
   const { data: activity = [], isPending: activityPending } = useQuery({
     queryKey: ["overview-activity"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("audit_logs")
         .select("action, created_at")
         .order("created_at", { ascending: false })
-        .limit(8);
+        .limit(6);
+      if (error) throw error;
       return (data ?? []) as AuditRow[];
     },
   });
@@ -104,306 +149,341 @@ export default function Overview() {
     const closed = surveys.filter((s) => s.status === "closed").length;
     const startToday = new Date();
     startToday.setHours(0, 0, 0, 0);
-    const today = responses.filter((r) => new Date(r.submitted_at) >= startToday).length;
-    return {
-      total: surveys.length,
-      published,
-      draft,
-      closed,
-      totalResponses: responses.length,
-      today,
-      bank: bank.reduce((n, i) => n + i.items.length, 0),
-      instruments: bank.length,
-      publishRate: surveys.length ? Math.round((published / surveys.length) * 100) : 0,
-    };
-  }, [surveys, responses, bank]);
+    const today = responses.filter((r) => new Date(r.submittedAt) >= startToday).length;
+    return { total: surveys.length, published, draft, closed, totalResponses: responses.length, today };
+  }, [surveys, responses]);
 
-  const chartData = useMemo(() => {
-    const days = 14;
-    const buckets = Array.from({ length: days }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (days - 1 - i));
-      return { key: d.toISOString().slice(0, 10), count: 0 };
-    });
-    responses.forEach((r) => {
-      const b = buckets.find((x) => x.key === r.submitted_at.slice(0, 10));
-      if (b) b.count++;
-    });
-    return buckets;
-  }, [responses]);
+  const trend = useMemo(() => buildTrend(responses, period), [responses, period]);
+  const delta = useMemo(() => periodOverPeriod(responses, period), [responses, period]);
+  const completion = useMemo(() => buildCompletionStats(responses, summaries), [responses, summaries]);
+  const languages = useMemo(() => buildLanguageBreakdown(responses), [responses]);
 
-  const statusData = [
-    { name: "Published", value: stats.published, color: "hsl(var(--primary))" },
-    { name: "Draft", value: stats.draft, color: "hsl(var(--muted-foreground) / 0.45)" },
-    { name: "Closed", value: stats.closed, color: "hsl(var(--foreground) / 0.22)" },
-  ].filter((d) => d.value > 0);
-
+  const latestResponses = responses.slice(0, 5);
   const recentSurveys = surveys.slice(0, 5);
   const today = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
+  const trendDirection = delta.pctChange == null ? "flat" : delta.pctChange > 0 ? "up" : delta.pctChange < 0 ? "down" : "flat";
+
   return (
-    <PageContainer className="lg:py-6">
+    <PageContainer className="lg:py-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="eyebrow text-primary">Overview · {today}</div>
-          <h1 className="mt-1.5 t-title">
+          <h1 className="mt-1 t-title">
             Research that protects <span className="text-primary">tomorrow.</span>
           </h1>
         </div>
-        <Button asChild>
-          <Link to="/app/surveys">
-            <Plus className="h-4 w-4" strokeWidth={1.5} /> New survey
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {QUICK_ACTIONS.map((a) => (
+            <Button key={a.to} asChild variant={a.to === "/app/surveys" ? "default" : "outline"} size="sm" className="h-9">
+              <Link to={a.to}>
+                <a.icon className="h-4 w-4" strokeWidth={1.7} />
+                {a.label}
+              </Link>
+            </Button>
+          ))}
+        </div>
       </div>
 
-      {/* 12-col control-center grid. Primary column: hero KPI + supporting KPIs
-          + primary chart. Rail: quick actions, status, recent activity. Recent
-          surveys spans the bottom. Everything important lands above the fold on
-          a common desktop; only the survey list can fall just below it. */}
-      <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-12">
-        {/* ── Primary column ─────────────────────────────────────────── */}
-        <div className="flex flex-col gap-4 lg:col-span-8">
-          {/* Hero KPI + supporting KPIs */}
-          <motion.div variants={staggerParent} initial="hidden" animate="show" className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-            <motion.div variants={staggerChild} className="card-premium relative col-span-2 overflow-hidden p-5 xl:col-span-2">
-              <div className="glow-gradient pointer-events-none absolute -right-6 -top-6 h-40 w-40 rounded-pill opacity-70" />
-              <div className="relative">
-                <div className="flex items-center gap-2 eyebrow text-muted-foreground">
-                  <Inbox className="h-4 w-4" strokeWidth={1.6} /> Total responses
-                </div>
-                <div className="mt-2 flex items-end gap-3">
-                  <span className="t-display leading-none tabular-nums">
-                    <CountUp value={stats.totalResponses} />
-                  </span>
-                  {stats.today > 0 && (
-                    <span className="mb-1.5 inline-flex items-center gap-1 rounded-pill bg-[hsl(var(--success)/0.12)] px-2 py-0.5 t-caption font-semibold text-success">
-                      <TrendingUp className="h-3.5 w-3.5" strokeWidth={2} />+{stats.today} today
-                    </span>
+      {/* ── KPI row ──────────────────────────────────────────────────────── */}
+      <motion.div
+        variants={staggerParent}
+        initial="hidden"
+        animate="show"
+        className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-5"
+      >
+        <motion.div variants={staggerChild}>
+          <StatTile
+            icon={Inbox}
+            label="Total responses"
+            value={responsesError ? "—" : stats.totalResponses}
+            sub={responsesError ? "couldn't load — reload to retry" : `+${stats.today} today`}
+            tone="primary"
+            loading={responsesPending}
+            className="h-full"
+          />
+        </motion.div>
+        <motion.div variants={staggerChild}>
+          <StatTile
+            icon={TrendingUp}
+            label={`This ${period === "week" ? "week" : period === "month" ? "month" : "year"}`}
+            value={delta.current}
+            sub={delta.pctChange == null ? "no prior period" : `vs ${delta.previous} before`}
+            trend={{ value: delta.pctChange ?? 0, direction: trendDirection }}
+            loading={responsesPending}
+            className="h-full"
+          />
+        </motion.div>
+        <motion.div variants={staggerChild}>
+          <StatTile
+            icon={ClipboardList}
+            label="Active surveys"
+            value={stats.published}
+            sub={`${stats.draft} draft · ${stats.closed} closed`}
+            loading={surveysPending}
+            className="h-full"
+          />
+        </motion.div>
+        <motion.div variants={staggerChild}>
+          <StatTile
+            icon={Gauge}
+            label="Completion"
+            value={completion.avgCompletionRate == null ? "—" : `${Math.round(completion.avgCompletionRate * 100)}%`}
+            sub={completion.avgCompletionRate == null ? "no view data yet" : "of opens submitted"}
+            loading={responsesPending}
+            className="h-full"
+          />
+        </motion.div>
+        <motion.div variants={staggerChild}>
+          <StatTile
+            icon={Activity}
+            label="Median time"
+            value={formatDuration(completion.medianSecondsToComplete)}
+            /* The honesty figure. An average drawn from three timed sessions out
+               of four hundred is not a median of anything, and saying so is
+               cheaper than having someone quote it in a paper. */
+            sub={`from ${completion.responsesWithTiming} timed`}
+            loading={responsesPending}
+            className="h-full"
+          />
+        </motion.div>
+      </motion.div>
+
+      {/* ── Analytics band ───────────────────────────────────────────────── */}
+      <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-12">
+        <SectionPanel
+          title="Responses over time"
+          icon={Activity}
+          className="lg:col-span-8"
+          action={
+            <div className="flex items-center gap-0.5 rounded-pill bg-sunken p-0.5">
+              {PERIODS.map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  onClick={() => setPeriod(p.value)}
+                  aria-pressed={period === p.value}
+                  className={cn(
+                    "rounded-pill px-2.5 py-1 t-caption font-semibold transition-colors duration-fast",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+                    period === p.value ? "bg-card text-primary shadow-xs" : "text-muted-foreground hover:text-foreground",
                   )}
-                </div>
-                <div className="mt-3 h-12 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="heroFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.22} />
-                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <Area type="monotone" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#heroFill)" animationDuration={900} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="mt-1 t-caption text-muted-foreground">Last 14 days</div>
-              </div>
-            </motion.div>
-
-            <Kpi icon={ClipboardList} label="Active surveys" value={stats.published} sub={`${stats.total} total`} />
-            <Kpi icon={TrendingUp} label="Publish rate" value={stats.publishRate} suffix="%" sub="of all surveys" />
-          </motion.div>
-
-          {/* Primary chart */}
-          <Panel title="Responses over time" icon={Activity} sub="Last 14 days" className="min-h-0 flex-1">
-            <div className="relative h-56 w-full xl:h-64">
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          }
+        >
+          <div className="relative h-[188px] w-full">
+            {responsesPending ? (
+              <Skeleton className="h-full w-full rounded-field" />
+            ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 8, right: 4, left: -26, bottom: 0 }}>
+                <AreaChart data={trend} margin={{ top: 6, right: 4, left: -28, bottom: 0 }}>
                   <defs>
                     <linearGradient id="respFill" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.26} />
                       <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                     </linearGradient>
                   </defs>
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tickLine={false}
+                    axisLine={false}
+                    interval="preserveStartEnd"
+                    minTickGap={24}
+                  />
                   <Tooltip
                     cursor={{ stroke: "hsl(var(--primary))", strokeOpacity: 0.2 }}
-                    contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12, boxShadow: "var(--shadow-md)" }}
-                    labelFormatter={() => ""}
+                    contentStyle={{
+                      borderRadius: 12,
+                      border: "1px solid hsl(var(--border))",
+                      fontSize: 12,
+                      boxShadow: "var(--shadow-md)",
+                    }}
                   />
-                  <Area type="monotone" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={2.5} fill="url(#respFill)" animationDuration={900} />
+                  <Area
+                    type="monotone"
+                    dataKey="count"
+                    name="Responses"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2.5}
+                    fill="url(#respFill)"
+                    animationDuration={700}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
-              {stats.totalResponses === 0 && (
-                <div className="pointer-events-none absolute inset-0 grid place-items-center">
-                  <span className="rounded-pill bg-muted px-3 py-1 t-caption text-muted-foreground">
-                    No responses yet — share a published survey to begin
+            )}
+            {!responsesPending && stats.totalResponses === 0 && (
+              <div className="pointer-events-none absolute inset-0 grid place-items-center">
+                <span className="rounded-pill bg-muted px-3 py-1 t-caption text-muted-foreground">
+                  No responses yet — enrol a family to begin
+                </span>
+              </div>
+            )}
+          </div>
+        </SectionPanel>
+
+        <SectionPanel title="Breakdown" icon={Languages} className="lg:col-span-4">
+          <div className="space-y-3.5">
+            {responsesPending ? (
+              Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)
+            ) : stats.totalResponses === 0 ? (
+              <p className="t-caption text-muted-foreground">
+                Language and completion shares appear once the first assessment is submitted.
+              </p>
+            ) : (
+              <>
+                {languages.map((l) => (
+                  <MeterRow
+                    key={l.language}
+                    label={l.label}
+                    value={l.count}
+                    max={stats.totalResponses}
+                    caption={`${l.count} · ${Math.round(l.pct * 100)}%`}
+                  />
+                ))}
+                <MeterRow
+                  label="Timed sessions"
+                  value={completion.responsesWithTiming}
+                  max={stats.totalResponses}
+                  caption={`${completion.responsesWithTiming} / ${stats.totalResponses}`}
+                  tone="muted"
+                />
+                <div className="flex items-center justify-between border-t border-border/70 pt-2.5 t-caption">
+                  <span className="text-muted-foreground">Average time</span>
+                  <span className="font-semibold tabular-nums">
+                    {formatDuration(completion.avgSecondsToComplete)}
                   </span>
                 </div>
-              )}
-            </div>
-          </Panel>
-        </div>
+              </>
+            )}
+          </div>
+        </SectionPanel>
+      </div>
 
-        {/* ── Rail ───────────────────────────────────────────────────── */}
-        <div className="flex flex-col gap-4 lg:col-span-4">
-          <Panel title="Quick actions" icon={Plus}>
-            <div className="grid grid-cols-2 gap-2">
-              {QUICK_ACTIONS.map((a) => (
-                <Link
-                  key={a.to}
-                  to={a.to}
-                  className="group flex items-center gap-2.5 rounded-[12px] border border-border/70 px-3 py-2.5 transition-colors duration-fast hover:border-primary/40 hover:bg-muted/40"
-                >
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-control bg-accent-tint text-primary transition-transform duration-fast group-hover:scale-105">
-                    <a.icon className="h-4 w-4" strokeWidth={1.7} />
-                  </span>
-                  <span className="min-w-0 truncate t-caption font-medium">{a.label}</span>
-                </Link>
+      {/* ── What just happened ───────────────────────────────────────────── */}
+      <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-12">
+        <SectionPanel
+          title="Latest responses"
+          icon={Inbox}
+          className="lg:col-span-5"
+          action={
+            <Link to="/app/responses" className="t-caption font-medium text-primary hover:underline">
+              View all
+            </Link>
+          }
+        >
+          {responsesPending ? (
+            <div className="space-y-1.5">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-9 rounded-field" />
               ))}
             </div>
-          </Panel>
-
-          <Panel title="Survey status" icon={ClipboardList}>
-            <div className="flex items-center gap-5">
-              <div className="relative h-20 w-20 shrink-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={statusData.length ? statusData : [{ name: "none", value: 1, color: "hsl(var(--muted))" }]} dataKey="value" innerRadius={27} outerRadius={39} paddingAngle={2} stroke="none">
-                      {(statusData.length ? statusData : [{ color: "hsl(var(--muted))" }]).map((d, i) => (
-                        <Cell key={i} fill={d.color} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 grid place-items-center">
-                  <div className="text-center">
-                    <div className="t-card leading-none tabular-nums">
-                      <CountUp value={stats.total} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="flex-1 space-y-1.5 t-caption">
-                <Legend label="Published" value={stats.published} color="bg-primary" />
-                <Legend label="Draft" value={stats.draft} color="bg-muted-foreground/45" />
-                <Legend label="Closed" value={stats.closed} color="bg-foreground/22" />
-              </div>
-            </div>
-          </Panel>
-
-          <Panel title="Recent activity" icon={Activity} action={{ to: "/app/notifications", label: "View all" }} className="min-h-0 flex-1">
-            {activityPending ? (
-              <ul className="space-y-2.5">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <li key={i} className="flex items-center gap-2.5">
-                    <Skeleton className="h-1.5 w-1.5 shrink-0 rounded-pill" />
-                    <Skeleton className="h-3.5 w-2/3" />
-                  </li>
-                ))}
-              </ul>
-            ) : activity.length === 0 ? (
-              <p className="py-2 t-caption text-muted-foreground">Activity will appear here as it happens.</p>
-            ) : (
-              <ul className="space-y-2.5">
-                {activity.slice(0, 6).map((a, i) => (
-                  <li key={i} className="flex items-center gap-2.5">
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-pill bg-primary/70" />
-                    <span className="min-w-0 flex-1 truncate t-caption font-medium">{ACTION_LABEL[a.action] ?? a.action}</span>
-                    <span className="shrink-0 t-caption tabular-nums text-muted-foreground">{relTime(a.created_at)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Panel>
-        </div>
-
-        {/* ── Recent surveys (spans; sits just at/below the fold) ─────── */}
-        <div className="lg:col-span-12">
-          <Panel title="Recent surveys" icon={ClipboardList} action={{ to: "/app/surveys", label: "View all" }}>
-            {surveysPending ? (
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-14 rounded-[12px]" />
-                ))}
-              </div>
-            ) : recentSurveys.length === 0 ? (
-              <div className="grid place-items-center rounded-[12px] border border-dashed border-border/70 px-4 py-8 text-center">
-                <div>
-                  <p className="t-body text-muted-foreground">No surveys yet.</p>
-                  <Button asChild size="sm" variant="outline" className="mt-3">
-                    <Link to="/app/surveys">New survey</Link>
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                {recentSurveys.map((s) => (
+          ) : latestResponses.length === 0 ? (
+            <EmptyRow label="No responses yet." to="/app/families" action="Enrol a family" />
+          ) : (
+            <ul className="space-y-1">
+              {latestResponses.map((r) => (
+                <li key={r.id}>
+                  {/* Opens straight into the workspace inspector — the id is
+                      consumed and dropped from the URL by Responses. */}
                   <Link
-                    key={s.id}
-                    to={`/app/surveys/${s.id}/edit`}
-                    className="group flex items-center gap-3 rounded-[12px] border border-border/70 px-3 py-2.5 transition-colors duration-fast hover:border-primary/40 hover:bg-muted/40"
+                    to={`/app/responses?r=${r.id}`}
+                    className="group flex items-center gap-3 rounded-field border border-border/70 px-3 py-1.5 transition-colors duration-fast hover:border-primary/40 hover:bg-muted/40"
                   >
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-control bg-accent transition-transform duration-fast group-hover:scale-105">
-                      <ClipboardList className="h-[17px] w-[17px] text-primary" />
+                    <span className="shrink-0 font-mono text-xs font-semibold tracking-wide group-hover:text-primary">
+                      {r.referenceId}
                     </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate t-caption font-semibold group-hover:text-primary">{s.title_en}</span>
-                      <span className="block text-[11px] text-muted-foreground">{s.question_count} questions · {s.response_count} responses</span>
+                    <span className="min-w-0 flex-1 truncate t-caption text-muted-foreground">{r.surveyTitle}</span>
+                    <span className="shrink-0 t-caption tabular-nums text-tertiary">{relTime(r.submittedAt)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </SectionPanel>
+
+        <SectionPanel
+          title="Recent surveys"
+          icon={ClipboardList}
+          className="lg:col-span-4"
+          action={
+            <Link to="/app/surveys" className="t-caption font-medium text-primary hover:underline">
+              View all
+            </Link>
+          }
+        >
+          {surveysPending ? (
+            <div className="space-y-1.5">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-9 rounded-field" />
+              ))}
+            </div>
+          ) : recentSurveys.length === 0 ? (
+            <EmptyRow label="No surveys yet." to="/app/surveys" action="New survey" />
+          ) : (
+            <ul className="space-y-1">
+              {recentSurveys.map((s) => (
+                <li key={s.id}>
+                  <Link
+                    to={`/app/surveys/${s.id}/edit`}
+                    className="group flex items-center gap-2.5 rounded-field border border-border/70 px-3 py-1.5 transition-colors duration-fast hover:border-primary/40 hover:bg-muted/40"
+                  >
+                    <span className="min-w-0 flex-1 truncate t-caption font-semibold group-hover:text-primary">
+                      {s.title_en}
                     </span>
+                    <span className="shrink-0 t-caption tabular-nums text-tertiary">{s.response_count}</span>
                     <StatusBadge status={s.status} />
                   </Link>
-                ))}
-              </div>
-            )}
-          </Panel>
-        </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </SectionPanel>
+
+        <SectionPanel title="Activity" icon={Activity} className="lg:col-span-3">
+          {activityPending ? (
+            <ul className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <li key={i} className="flex items-center gap-2">
+                  <Skeleton className="h-1.5 w-1.5 shrink-0 rounded-pill" />
+                  <Skeleton className="h-3 w-2/3" />
+                </li>
+              ))}
+            </ul>
+          ) : activity.length === 0 ? (
+            <p className="t-caption text-muted-foreground">Activity will appear here as it happens.</p>
+          ) : (
+            <ul className="space-y-2">
+              {activity.map((a, i) => (
+                <li key={i} className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-pill bg-primary/70" />
+                  <span className="min-w-0 flex-1 truncate t-caption font-medium">
+                    {ACTION_LABEL[a.action] ?? a.action}
+                  </span>
+                  <span className="shrink-0 t-caption tabular-nums text-tertiary">{relTime(a.created_at)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </SectionPanel>
       </div>
     </PageContainer>
   );
 }
 
-function Kpi({ icon: Icon, label, value, suffix, sub }: { icon: LucideIcon; label: string; value: number; suffix?: string; sub: string }) {
+function EmptyRow({ label, to, action }: { label: string; to: string; action: string }) {
   return (
-    <motion.div variants={staggerChild} className="card-premium flex flex-col justify-center p-5">
-      <span className="grid h-8 w-8 place-items-center rounded-control bg-accent-tint text-primary">
-        <Icon className="h-4 w-4" strokeWidth={1.6} />
-      </span>
-      <div className="t-title mt-3 tabular-nums leading-none">
-        <CountUp value={value} suffix={suffix} />
+    <div className="grid place-items-center rounded-field border border-dashed border-border/70 px-4 py-5 text-center">
+      <div>
+        <p className="t-caption text-muted-foreground">{label}</p>
+        <Button asChild size="sm" variant="outline" className="mt-2">
+          <Link to={to}>{action}</Link>
+        </Button>
       </div>
-      <div className="mt-1.5 t-caption font-medium">{label}</div>
-      <div className="t-caption text-tertiary">{sub}</div>
-    </motion.div>
-  );
-}
-
-function Panel({
-  title,
-  icon: Icon,
-  sub,
-  action,
-  className,
-  children,
-}: {
-  title: string;
-  icon: LucideIcon;
-  sub?: string;
-  action?: { to: string; label: string };
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className={`card-premium p-5 ${className ?? ""}`}>
-      <div className="mb-3 flex items-center gap-2">
-        <Icon className="h-4 w-4 text-muted-foreground" strokeWidth={1.7} />
-        <h2 className="t-card">{title}</h2>
-        {sub && <span className="t-caption text-muted-foreground">· {sub}</span>}
-        {action && (
-          <Link to={action.to} className="ml-auto t-caption font-medium text-primary hover:underline">
-            {action.label}
-          </Link>
-        )}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function Legend({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className={`h-2.5 w-2.5 rounded-pill ${color}`} />
-      <span className="text-muted-foreground">{label}</span>
-      <span className="ml-auto font-medium tabular-nums">{value}</span>
     </div>
   );
 }

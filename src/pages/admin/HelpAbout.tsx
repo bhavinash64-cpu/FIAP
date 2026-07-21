@@ -67,7 +67,7 @@ export default function HelpAbout() {
   return (
     <PageContainer>
       <PageHeader
-        eyebrow={t("navGroupGovernance")}
+        eyebrow={t("navGroupSystem")}
         title={t("navHelp")}
         subtitle="A quick guide to the platform, and the details behind it."
       />
@@ -140,16 +140,16 @@ export default function HelpAbout() {
             </div>
             <div>
               <div className="t-card font-semibold">Jeevana Insight</div>
-              <div className="t-caption text-muted-foreground">{t("appName")}</div>
+              <div className="t-caption text-muted-foreground">{t("orgLine")}</div>
             </div>
           </div>
           <dl className="mt-5 divide-y divide-border">
             <Row label="Version" value={APP_VERSION} />
-            <Row label="Authority" value={t("govOf")} />
-            <Row label="Support" value="jeevana-support@appolice.gov.in" />
+            <Row label="Platform" value={t("orgLine")} />
+            <Row label="Support" value="support@jeevanainsight.app" />
           </dl>
           <p className="mt-5 t-caption leading-relaxed text-muted-foreground">
-            Built to support the well-being of police families. Family responses are confidential and used only for
+            Built to support family well-being research. Family responses are confidential and used only for
             well-being research and support programmes. Every administrative action is recorded in the{" "}
             <Link to="/app/audit" className="font-medium text-primary link-underline">
               audit log

@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Download,
   FileSpreadsheet,
   FileText,
   Loader2,
-  Inbox,
   CalendarRange,
   Users,
   Check,
@@ -22,6 +21,8 @@ import { listSurveys, getSurveyWithQuestions } from "@/lib/surveys";
 import { getResponsesForExport, resolveReportRange, type RangeKey } from "@/lib/analytics";
 import { buildResponsesWorkbook, downloadBlob, slugifyFilename } from "@/lib/exportExcel";
 import { PageContainer, PageHeader } from "@/components/admin/PageContainer";
+import { EmptyInboxArt, EmptyState } from "@/components/admin/EmptyState";
+import { exportRelTime, loadExportHistory, pushExportHistory, type ExportRecord } from "@/lib/exportHistory";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -32,35 +33,8 @@ const RANGES: { key: RangeKey | "all"; label: string }[] = [
   { key: "12m", label: "12 months" },
 ];
 
-interface ExportRecord {
-  format: "xlsx" | "pdf";
-  survey: string;
-  count: number | null;
-  at: string;
-}
-const HISTORY_KEY = "exportHistory";
-
-function loadHistory(): ExportRecord[] {
-  if (typeof window === "undefined") return [];
-  try {
-    return JSON.parse(localStorage.getItem(HISTORY_KEY) ?? "[]") as ExportRecord[];
-  } catch {
-    return [];
-  }
-}
-function pushHistory(rec: ExportRecord): ExportRecord[] {
-  const next = [rec, ...loadHistory()].slice(0, 8);
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
-  return next;
-}
-function relTime(iso: string) {
-  const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.round(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
+// The history shape and its storage key live in lib/exportHistory so Reports
+// can list the same records without a second, drifting definition.
 
 /**
  * Exporting as a complete workflow: pick the survey and range, see exactly what
@@ -70,10 +44,13 @@ function relTime(iso: string) {
  */
 export default function ExportCenter() {
   const t = useT();
-  const [surveyId, setSurveyId] = useState<string>("");
+  // Responses and Reports both deep-link here with the survey already chosen —
+  // arriving pre-configured is the difference between one click and three.
+  const [params] = useSearchParams();
+  const [surveyId, setSurveyId] = useState<string>(() => params.get("survey") ?? "");
   const [range, setRange] = useState<RangeKey | "all">("all");
   const [exporting, setExporting] = useState(false);
-  const [history, setHistory] = useState<ExportRecord[]>(loadHistory);
+  const [history, setHistory] = useState<ExportRecord[]>(loadExportHistory);
 
   const { data: surveys, isPending } = useQuery({ queryKey: ["surveys"], queryFn: listSurveys });
 
@@ -107,7 +84,7 @@ export default function ExportCenter() {
       }
       const blob = await buildResponsesWorkbook(detail.survey, detail.questions, rows);
       downloadBlob(blob, `${slugifyFilename(effective.title_en)}-responses.xlsx`);
-      setHistory(pushHistory({ format: "xlsx", survey: effective.title_en, count: rows.length, at: new Date().toISOString() }));
+      setHistory(pushExportHistory({ format: "xlsx", survey: effective.title_en, count: rows.length, at: new Date().toISOString() }));
       toast.success(`Exported ${rows.length} responses`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not export right now.");
@@ -118,7 +95,7 @@ export default function ExportCenter() {
 
   function logPdf() {
     if (!effective) return;
-    setHistory(pushHistory({ format: "pdf", survey: effective.title_en, count: rangeCount ?? null, at: new Date().toISOString() }));
+    setHistory(pushExportHistory({ format: "pdf", survey: effective.title_en, count: rangeCount ?? null, at: new Date().toISOString() }));
   }
 
   const rangeLabel = RANGES.find((r) => r.key === range)?.label ?? "All time";
@@ -137,17 +114,25 @@ export default function ExportCenter() {
           <span className="sr-only">{t("loading")}</span>
         </div>
       ) : !surveys?.length ? (
-        <div className="mt-8 rounded-surface border border-dashed border-border p-12 text-center">
-          <div className="mx-auto grid h-16 w-16 place-items-center rounded-pill bg-accent-tint">
-            <Inbox className="h-7 w-7 text-primary" strokeWidth={1.5} />
-          </div>
-          <h2 className="mt-6 t-section">Nothing to export yet</h2>
-          <p className="mx-auto mt-2 max-w-sm t-body text-muted-foreground">
-            Publish a survey and collect a few responses — then export them here as a workbook or a report.
-          </p>
+        <div className="mt-6 rounded-surface border border-border/70 bg-card">
+          <EmptyState
+            illustration={<EmptyInboxArt />}
+            title="Nothing to export yet"
+            description="Publish a survey and collect a few responses — then download them here as a workbook, or open a printable report."
+            primaryAction={
+              <Button asChild>
+                <Link to="/app/surveys">New survey</Link>
+              </Button>
+            }
+            secondaryAction={
+              <Button asChild variant="outline">
+                <Link to="/app/qr">Open QR manager</Link>
+              </Button>
+            }
+          />
         </div>
       ) : (
-        <div className="mt-8 grid gap-6 lg:grid-cols-12">
+        <div className="mt-6 grid gap-4 lg:grid-cols-12">
           {/* Configure + confidence */}
           <div className="lg:col-span-8">
             <div className="rounded-surface border border-border/70 bg-card p-5 sm:p-6">
@@ -267,7 +252,7 @@ export default function ExportCenter() {
                         <div className="truncate t-caption font-medium">{h.survey}</div>
                         <div className="text-[11px] text-muted-foreground">
                           {h.format === "xlsx" ? "Workbook" : "Report"}
-                          {h.count != null ? ` · ${h.count} responses` : ""} · {relTime(h.at)}
+                          {h.count != null ? ` · ${h.count} responses` : ""} · {exportRelTime(h.at)}
                         </div>
                       </div>
                     </li>

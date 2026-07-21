@@ -79,9 +79,9 @@ export function SurveyForm({
                 <ShieldCheck className="h-5 w-5 text-primary-foreground" />
               </div>
               <div className="min-w-0 flex-1 leading-tight">
-                <div className="truncate t-caption font-semibold">AP Police</div>
+                <div className="truncate t-caption font-semibold">Jeevana Insight</div>
                 <div className="truncate t-caption text-muted-foreground">
-                  {t("Government of Andhra Pradesh", "ఆంధ్రప్రదేశ్ ప్రభుత్వం")}
+                  {t("Family Assessment Research Platform", "కుటుంబ మూల్యాంకన పరిశోధన వేదిక")}
                 </div>
               </div>
               <LangToggle size="sm" />

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight, Lock, BookOpen, LifeBuoy,
-  ClipboardList, Library, QrCode, Users, FileSearch, BarChart3, FileText, Download, Bell, ScrollText,
+  ClipboardList, Library, QrCode, Users, BarChart3, FileText, ScrollText,
   ShieldCheck, KeyRound, Database, Fingerprint, EyeOff,
   FlaskConical, Landmark, Building2, Stethoscope, GraduationCap,
   BadgeCheck, type LucideIcon,
@@ -93,17 +93,22 @@ const WORKFLOW = [
   { icon: FileText, title: "Research reports", line: "Printable reports and exportable datasets." },
 ];
 
+/**
+ * The six modules a visitor can actually be sold on, and no more.
+ *
+ * Notifications, audit logs, the export centre and the response explorer are
+ * real and shipped, but they are back-office plumbing: advertising them on a
+ * public page describes an admin console to someone who will never see one, and
+ * pads a grid that reads better as a clean 3x2 than as ten cells and an
+ * "and more" filler cell.
+ */
 const FEATURES: { icon: LucideIcon; title: string; line: string }[] = [
-  { icon: ClipboardList, title: "Survey Builder", line: "Design structured questionnaires using validated research instruments." },
-  { icon: Library, title: "Question Library", line: "A central repository of reusable questions and response scales." },
-  { icon: QrCode, title: "QR Distribution", line: "Secure QR code and link generation for every published survey." },
-  { icon: Users, title: "Family Assessment", line: "A simple, bilingual assessment experience for respondents." },
-  { icon: FileSearch, title: "Response Explorer", line: "Search, filter and review individual responses in detail." },
-  { icon: BarChart3, title: "Analytics", line: "Visualise trends, completion and per-question findings." },
-  { icon: FileText, title: "Reports", line: "Generate printable, period-over-period research reports." },
-  { icon: Download, title: "Export Center", line: "Download structured datasets for external analysis." },
-  { icon: Bell, title: "Notifications", line: "Stay informed about assessment and response activity." },
-  { icon: ScrollText, title: "Audit Logs", line: "Every administrative action is recorded and traceable." },
+  { icon: ClipboardList, title: "Survey Builder", line: "Design structured questionnaires from validated research instruments." },
+  { icon: Library, title: "Research Instruments", line: "Eight peer-reviewed scales, reproduced with their original response anchors." },
+  { icon: Users, title: "Family Assessment", line: "A guided, bilingual assessment experience that needs no login." },
+  { icon: QrCode, title: "QR Distribution", line: "A secure QR code and shareable link for every published survey." },
+  { icon: BarChart3, title: "Analytics", line: "Trends, completion and per-question findings, live." },
+  { icon: FileText, title: "Reports", line: "Printable, period-over-period research reports." },
 ];
 
 const INSTRUMENTS = [
@@ -128,7 +133,7 @@ const SECURITY: { icon: LucideIcon; title: string; line: string }[] = [
 const SECTORS: { icon: LucideIcon; label: string }[] = [
   { icon: FlaskConical, label: "Research" },
   { icon: Landmark, label: "Public Institutions" },
-  { icon: Building2, label: "Government" },
+  { icon: Building2, label: "Public Sector" },
   { icon: Stethoscope, label: "Healthcare" },
   { icon: GraduationCap, label: "Academic Organizations" },
 ];
@@ -214,7 +219,7 @@ export default function Landing() {
             <Logo size={40} />
             <span className="min-w-0 leading-tight">
               <span className="block truncate t-caption font-semibold tracking-tight">Jeevana Insight</span>
-              <span className="hidden text-[11px] text-muted-foreground sm:block">AP Police · Research Platform</span>
+              <span className="hidden text-[11px] text-muted-foreground sm:block">Family Assessment Research Platform</span>
             </span>
           </Link>
 
@@ -257,8 +262,8 @@ export default function Landing() {
               className="inline-flex max-w-full items-center gap-2 rounded-xl border border-border bg-card px-3 py-1.5 t-caption font-medium text-muted-foreground"
             >
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-success" />
-              <span className="hidden min-w-0 sm:inline">Government of Andhra Pradesh · Department of Police</span>
-              <span className="min-w-0 sm:hidden">Govt. of Andhra Pradesh · Police Dept.</span>
+              <span className="hidden min-w-0 sm:inline">Private research platform · Access by invitation</span>
+              <span className="min-w-0 sm:hidden">Private · Invitation only</span>
             </motion.div>
 
             <RevealHeading
@@ -368,16 +373,28 @@ export default function Landing() {
           <SectionEyebrow>Capabilities</SectionEyebrow>
           <RevealHeading lines={["Everything a research programme needs"]} className="mt-3 t-title font-semibold tracking-tight" />
           <p className="mt-3 t-body text-muted-foreground">
-            Ten working modules cover the full lifecycle — authoring, distribution, collection, analysis and governance.
+            Six working modules cover the full lifecycle — authoring, distribution, collection, analysis and reporting.
           </p>
         </Reveal>
 
         <Reveal delay={0.05} className="mt-12">
           <div className="grid grid-cols-1 overflow-hidden rounded-3xl border border-border bg-card sm:grid-cols-2 lg:grid-cols-3">
+            {/*
+              Interior hairlines only. The container already draws the outer
+              frame, so a cell in the last column or last row must NOT draw its
+              own — otherwise it doubles up against the frame. `nth-last-child`
+              finds the last row at each breakpoint without hardcoding the count,
+              so the grid stays correct if a module is ever added or removed.
+            */}
             {FEATURES.map((f) => (
               <div
                 key={f.title}
-                className="group border-b border-r border-border p-6 transition-colors duration-300 hover:bg-muted/40 sm:p-8 [&:nth-child(2n)]:border-r-0 lg:[&:nth-child(2n)]:border-r lg:[&:nth-child(3n)]:border-r-0"
+                className={cn(
+                  "group border-b border-r border-border p-6 transition-colors duration-300 hover:bg-muted/40 sm:p-8",
+                  "border-r-0 last:border-b-0 sm:border-r",
+                  "sm:[&:nth-child(2n)]:border-r-0 sm:[&:nth-last-child(-n+2)]:border-b-0",
+                  "lg:[&:nth-child(2n)]:border-r lg:[&:nth-child(3n)]:border-r-0 lg:[&:nth-last-child(-n+3)]:border-b-0",
+                )}
               >
                 <span className="grid h-11 w-11 place-items-center rounded-2xl border border-border bg-canvas text-primary">
                   <f.icon className={cn("h-5 w-5", CARD_ICON)} strokeWidth={1.7} />
@@ -388,15 +405,6 @@ export default function Landing() {
                 </div>
               </div>
             ))}
-            <div className="group flex items-center gap-3 border-b border-border p-6 sm:p-8">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-accent text-primary">
-                <ArrowRight className={cn("h-5 w-5", CARD_ICON)} strokeWidth={1.7} />
-              </span>
-              <div className="min-w-0">
-                <div className="t-card font-semibold">And more</div>
-                <Link to="/auth" className="t-caption font-medium text-primary hover:underline">Sign in to explore →</Link>
-              </div>
-            </div>
           </div>
         </Reveal>
       </section>
@@ -454,10 +462,10 @@ export default function Landing() {
         <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-16">
             <Reveal>
-              <SectionEyebrow>Security &amp; governance</SectionEyebrow>
+              <SectionEyebrow>Security &amp; trust</SectionEyebrow>
               <RevealHeading lines={["Trusted with sensitive research"]} className="mt-3 t-title font-semibold tracking-tight" />
               <p className="mt-3 t-body text-muted-foreground">
-                The platform is built for the standards public institutions require — controlled access, an immutable
+                The platform is built for the standards research institutions require — controlled access, an immutable
                 record of every action, and privacy by default for the families who respond.
               </p>
               <div className="mt-6 inline-flex items-center gap-2 rounded-2xl border border-border bg-canvas px-4 py-3 t-caption text-muted-foreground">
@@ -515,8 +523,8 @@ export default function Landing() {
                 <span className="t-card font-semibold tracking-tight">Jeevana Insight</span>
               </div>
               <p className="mt-3 t-caption leading-relaxed text-muted-foreground">
-                A secure family-assessment research platform for authorised institutions.
-                Government of Andhra Pradesh · Department of Police.
+                A secure family-assessment research platform for authorised research teams and
+                institutions.
               </p>
             </div>
 
@@ -535,7 +543,7 @@ export default function Landing() {
           </div>
 
           <div className="mt-10 flex flex-col items-start justify-between gap-4 border-t border-border pt-6 sm:flex-row sm:items-center">
-            <div className="t-caption text-muted-foreground">© 2025 Jeevana Insight · Government of Andhra Pradesh</div>
+            <div className="t-caption text-muted-foreground">© 2026 Jeevana Insight · Family Assessment Research Platform</div>
             <div className="flex items-center gap-4">
               <span className="t-caption text-tertiary">v1.0</span>
               <LangToggle size="sm" />

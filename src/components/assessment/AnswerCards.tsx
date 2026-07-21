@@ -1,4 +1,5 @@
 import { Check } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RatingStars } from "@/components/survey/RatingStars";
@@ -16,6 +17,12 @@ const LIKERT_LABELS: Record<Lang, string[]> = {
 /**
  * One selectable answer. Sized for a thumb and for older eyes: 68px minimum,
  * 17px label, and a hit area that spans the full card rather than a 20px radio.
+ *
+ * Selection is confirmed three ways at once, because on a phone in daylight one
+ * signal is easy to miss: the card takes the brand border and a soft primary
+ * glow, the tick fills, and the emoji gives a single spring-scaled beat. The
+ * emoji settles slightly larger than at rest and keeps a faint drop-shadow, so
+ * the choice still reads as chosen after the animation has finished.
  */
 function OptionCard({
   label,
@@ -30,6 +37,7 @@ function OptionCard({
   onSelect: () => void;
   multi?: boolean;
 }) {
+  const reduce = useReducedMotion();
   return (
     <button
       type="button"
@@ -37,18 +45,35 @@ function OptionCard({
       aria-checked={selected}
       onClick={onSelect}
       className={cn(
-        "flex min-h-[68px] w-full items-center gap-4 rounded-surface border-2 px-4 py-3.5 text-left transition-all duration-fast",
+        "flex min-h-[68px] w-full items-center gap-4 rounded-surface border-2 px-4 py-3.5 text-left",
+        "transition-[background-color,border-color,box-shadow,transform] duration-base ease-out",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         "active:scale-[0.99]",
         selected
-          ? "border-primary bg-accent shadow-sm"
-          : "border-border bg-card hover:border-primary/45 hover:bg-muted/40",
+          ? "border-primary bg-accent shadow-[0_0_0_4px_hsl(var(--primary)/0.10),0_6px_20px_-10px_hsl(var(--primary)/0.55)]"
+          : "border-border bg-card hover:-translate-y-px hover:border-primary/45 hover:bg-muted/40 hover:shadow-sm",
       )}
     >
       {visual?.emoji ? (
-        <span aria-hidden className="shrink-0 text-[26px] leading-none">
+        <motion.span
+          aria-hidden
+          className="shrink-0 text-[26px] leading-none"
+          initial={false}
+          animate={
+            reduce
+              ? { opacity: selected ? 1 : 0.75 }
+              : {
+                  scale: selected ? 1.16 : 1,
+                  opacity: selected ? 1 : 0.72,
+                  filter: selected
+                    ? "saturate(1.15) drop-shadow(0 2px 8px hsl(var(--primary) / 0.45))"
+                    : "saturate(0.85) drop-shadow(0 0 0 transparent)",
+                }
+          }
+          transition={{ type: "spring", stiffness: 460, damping: 15 }}
+        >
           {visual.emoji}
-        </span>
+        </motion.span>
       ) : visual?.level && visual.total ? (
         <span className="shrink-0">
           <ScaleMeter level={visual.level} total={visual.total} active={selected} />
@@ -62,7 +87,7 @@ function OptionCard({
       <span
         aria-hidden
         className={cn(
-          "grid h-6 w-6 shrink-0 place-items-center border-2 transition-colors",
+          "grid h-6 w-6 shrink-0 place-items-center border-2 transition-colors duration-fast",
           multi ? "rounded-md" : "rounded-pill",
           selected ? "border-primary bg-primary" : "border-border",
         )}
@@ -204,6 +229,8 @@ export function AnswerCards({
     );
   }
 
+  const promptLabel = renderBilingual(mode, question.prompt_en, question.prompt_te).primary;
+
   if (question.kind === "short_text") {
     return (
       <Input
@@ -212,6 +239,7 @@ export function AnswerCards({
         maxLength={300}
         className="h-14 rounded-field text-[17px]"
         placeholder={t("yourAnswer")}
+        aria-label={promptLabel}
       />
     );
   }
@@ -224,6 +252,7 @@ export function AnswerCards({
       rows={5}
       className="rounded-field text-[17px] leading-relaxed"
       placeholder={t("yourAnswer")}
+      aria-label={promptLabel}
     />
   );
 }

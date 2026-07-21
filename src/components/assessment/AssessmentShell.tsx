@@ -1,6 +1,8 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { LangToggle } from "@/components/LangToggle";
 import { Logo } from "@/components/Logo";
+import { SupportButton } from "@/components/assessment/SupportButton";
+import { useAssessmentChrome } from "@/components/assessment/AssessmentChrome";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +27,19 @@ export function AssessmentShell({
   center?: boolean;
 }) {
   const t = useT();
+  const { headerAction, identityLine } = useAssessmentChrome();
+  const mainRef = useRef<HTMLElement>(null);
+
+  // Every stage is a distinct component, so it mounts fresh — move focus to its
+  // heading on mount so a keyboard/screen-reader user lands on the new content
+  // instead of a stale control from the previous screen.
+  useEffect(() => {
+    const heading = mainRef.current?.querySelector<HTMLElement>("h1, h2");
+    if (heading) {
+      if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
+      heading.focus({ preventScroll: true });
+    }
+  }, []);
 
   return (
     <div className="flex min-h-dvh flex-col bg-canvas">
@@ -33,14 +48,18 @@ export function AssessmentShell({
           <Logo size={36} />
           <div className="min-w-0 flex-1 leading-tight">
             <div className="truncate t-caption font-semibold text-foreground">{t("appShort")}</div>
-            <div className="truncate text-[11px] font-medium text-muted-foreground">{t("govOf")}</div>
+            <div className="truncate text-[11px] font-medium text-muted-foreground">
+              {identityLine ?? t("orgLine")}
+            </div>
           </div>
+          {headerAction}
           <LangToggle size="sm" />
         </div>
         {progress}
       </header>
 
       <main
+        ref={mainRef}
         className={cn(
           "mx-auto flex w-full max-w-2xl flex-1 flex-col px-5 sm:px-6",
           center ? "justify-center py-10" : "py-8",
@@ -50,6 +69,9 @@ export function AssessmentShell({
       </main>
 
       {footer}
+
+      {/* Raised clear of the action bar on stages that have one. */}
+      <SupportButton raised={!!footer} />
     </div>
   );
 }

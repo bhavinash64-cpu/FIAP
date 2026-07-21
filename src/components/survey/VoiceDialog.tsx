@@ -51,6 +51,9 @@ export function VoiceDialog({
   const [kind, setKind] = useState<QuestionKind>("short_text");
   const [saving, setSaving] = useState(false);
   const recRef = useRef<SpeechRecognitionLike | null>(null);
+  // Only finalised speech accumulates here; interim text is shown live but never
+  // stored, so partial results can't pile up as duplicated fragments.
+  const finalRef = useRef("");
 
   useEffect(() => {
     if (!open) return;
@@ -67,14 +70,18 @@ export function VoiceDialog({
     rec.continuous = true;
     rec.interimResults = true;
     rec.onresult = (e) => {
-      let finalText = "";
       let interimText = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const r = e.results[i];
-        if (r.isFinal) finalText += r[0].transcript;
-        else interimText += r[0].transcript;
+        if (r.isFinal) {
+          const piece = r[0].transcript.trim();
+          finalRef.current = finalRef.current ? `${finalRef.current} ${piece}` : piece;
+        } else {
+          interimText += r[0].transcript;
+        }
       }
-      setTranscript((prev) => (finalText ? `${prev}${prev && !prev.endsWith(" ") ? " " : ""}${finalText}`.trim() : prev) + (interimText ? ` ${interimText}` : ""));
+      // Show the settled text plus the live interim — never accumulate interim.
+      setTranscript(`${finalRef.current}${interimText ? ` ${interimText.trim()}` : ""}`.trim());
     };
     rec.onerror = (e) => {
       if (e.error === "not-allowed" || e.error === "permission-denied") setStatus("denied");
@@ -82,6 +89,7 @@ export function VoiceDialog({
     };
     rec.onend = () => setStatus((s) => (s === "listening" ? "idle" : s));
     recRef.current = rec;
+    finalRef.current = "";
     setTranscript("");
     setStatus("listening");
     rec.start();
@@ -95,16 +103,21 @@ export function VoiceDialog({
   function close(v: boolean) {
     if (!v) {
       recRef.current?.stop();
+      finalRef.current = "";
       setTranscript(""); setStatus("idle"); setKind("short_text");
     }
     onOpenChange(v);
   }
 
   async function handleSave() {
-    if (!transcript.trim()) return toast.error("Record or type a question first.");
+    const text = transcript.trim();
+    if (!text) return toast.error("Record or type a question first.");
     setSaving(true);
     try {
-      const q = await createQuestion(surveyId, kind, { origin: "voice", prompt_en: transcript.trim() });
+      // Store the transcript in the field for the language it was dictated in —
+      // Telugu speech belongs in prompt_te, not prompt_en.
+      const promptField = lang === "te-IN" ? { prompt_te: text } : { prompt_en: text };
+      const q = await createQuestion(surveyId, kind, { origin: "voice", ...promptField });
       toast.success("Question added");
       onCreated(q);
       close(false);
@@ -182,7 +195,12 @@ export function VoiceDialog({
               <div className="text-xs font-medium text-muted-foreground">Transcript — edit before saving</div>
               <Textarea
                 value={transcript}
-                onChange={(e) => setTranscript(e.target.value)}
+                onChange={(e) => {
+                  // Manual edits become the new baseline so a later re-record
+                  // appends to what's on screen, not a stale internal buffer.
+                  finalRef.current = e.target.value;
+                  setTranscript(e.target.value);
+                }}
                 rows={3}
                 placeholder="Speak, or type the question directly…"
                 className="rounded-xl text-sm"

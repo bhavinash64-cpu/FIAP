@@ -126,11 +126,15 @@ describe("assessment stages render", () => {
         questions={questions}
         index={0}
         answers={{}}
+        meta={{}}
         mode="en"
         onAnswer={vi.fn()}
         onNavigate={vi.fn()}
         onBackToIntro={vi.fn()}
         onReview={vi.fn()}
+        onSkip={vi.fn()}
+        onDwell={vi.fn()}
+        onVoice={vi.fn()}
       />,
     );
     expect(screen.getByText("Question 1 of 3")).toBeInTheDocument();
@@ -142,7 +146,7 @@ describe("assessment stages render", () => {
     expect(screen.getByText("Listen")).toBeInTheDocument();
   });
 
-  it("Question stage blocks Next on a required, unanswered question", () => {
+  it("Question stage never blocks Next, even on a required, unanswered question", () => {
     const onNavigate = vi.fn();
     const onReview = vi.fn();
     renderStage(
@@ -150,16 +154,48 @@ describe("assessment stages render", () => {
         questions={questions}
         index={0}
         answers={{}}
+        meta={{}}
         mode="en"
         onAnswer={vi.fn()}
         onNavigate={onNavigate}
         onBackToIntro={vi.fn()}
         onReview={onReview}
+        onSkip={vi.fn()}
+        onDwell={vi.fn()}
+        onVoice={vi.fn()}
       />,
     );
+    // Required-ness is a research preference about which items matter, not
+    // permission the respondent has to earn. An unanswered item is carried
+    // forward and surfaced again on Review, never used to trap someone on a
+    // question they may have a real reason not to answer.
     fireEvent.click(screen.getByRole("button", { name: /^Next/i }));
-    expect(onNavigate).not.toHaveBeenCalled();
-    expect(screen.getByRole("alert")).toHaveTextContent(/choose an answer/i);
+    expect(onNavigate).toHaveBeenCalledWith(1);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("Question stage offers Skip while unanswered and reports it", () => {
+    const onSkip = vi.fn();
+    const onNavigate = vi.fn();
+    renderStage(
+      <QuestionStage
+        questions={questions}
+        index={0}
+        answers={{}}
+        meta={{}}
+        mode="en"
+        onAnswer={vi.fn()}
+        onNavigate={onNavigate}
+        onBackToIntro={vi.fn()}
+        onReview={vi.fn()}
+        onSkip={onSkip}
+        onDwell={vi.fn()}
+        onVoice={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Skip for now/i }));
+    expect(onSkip).toHaveBeenCalledWith("a");
+    expect(onNavigate).toHaveBeenCalledWith(1);
   });
 
   it("Question stage records an answer and reports it to the parent", () => {
@@ -169,11 +205,15 @@ describe("assessment stages render", () => {
         questions={questions}
         index={0}
         answers={{}}
+        meta={{}}
         mode="en"
         onAnswer={onAnswer}
         onNavigate={vi.fn()}
         onBackToIntro={vi.fn()}
         onReview={vi.fn()}
+        onSkip={vi.fn()}
+        onDwell={vi.fn()}
+        onVoice={vi.fn()}
       />,
     );
     // Pick the third likert option.
@@ -195,11 +235,50 @@ describe("assessment stages render", () => {
       />,
     );
     expect(screen.getByText("Review your answers")).toBeInTheDocument();
-    // One required question (c) is unanswered, so the CTA nudges to it. The
-    // phrase appears in both the banner and the button.
-    expect(screen.getAllByText(/1 questions still need an answer/i).length).toBeGreaterThan(0);
+    // Question (c) is unanswered, so it is listed back — by prompt, with a
+    // direct way in — rather than used to withhold the submit button.
+    expect(screen.getByText("Questions left unanswered")).toBeInTheDocument();
+    expect(screen.getByText("Answer now")).toBeInTheDocument();
+    // Twice: once in the gap list at the top, once in the full summary below.
+    expect(screen.getAllByText("Do you sleep well?")).toHaveLength(2);
+    // Submitting stays available throughout, worded to own the gap.
+    expect(screen.getByRole("button", { name: /Submit anyway/i })).toBeEnabled();
     // The chosen frequency option is shown in the summary.
     expect(screen.getByText("Sometimes")).toBeInTheDocument();
+  });
+
+  it("Review lets an incomplete assessment be submitted as-is", () => {
+    const onSubmit = vi.fn();
+    renderStage(
+      <ReviewStage
+        questions={questions}
+        answers={{ a: 3 }}
+        mode="en"
+        submitting={false}
+        onEdit={vi.fn()}
+        onBack={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Submit anyway/i }));
+    expect(onSubmit).toHaveBeenCalled();
+  });
+
+  it("Review routes Answer now back to the unanswered question's index", () => {
+    const onEdit = vi.fn();
+    renderStage(
+      <ReviewStage
+        questions={questions}
+        answers={{ a: 3, b: "o2" }}
+        mode="en"
+        submitting={false}
+        onEdit={onEdit}
+        onBack={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByText("Answer now"));
+    expect(onEdit).toHaveBeenCalledWith(2);
   });
 
   it("Review submits when everything required is answered", () => {
@@ -225,6 +304,93 @@ describe("assessment stages render", () => {
     expect(screen.getAllByText("1A2B-3C4D-5E6F").length).toBeGreaterThan(0);
   });
 
+  it("shows an encouragement at the midpoint, and never shows it twice", () => {
+    // Regression: Encouragement remembers spent moments in a ref. Mounted
+    // inside the subtree that remounts per question, that memory reset on every
+    // navigation and paging back across the midpoint replayed the message.
+    const many = Array.from({ length: 8 }, (_, i) => makeQ(`q${i}`, { prompt_en: `Prompt ${i}` }));
+    const props = {
+      questions: many,
+      answers: {},
+      meta: {},
+      mode: "en" as const,
+      onAnswer: vi.fn(),
+      onNavigate: vi.fn(),
+      onBackToIntro: vi.fn(),
+      onReview: vi.fn(),
+      onSkip: vi.fn(),
+      onDwell: vi.fn(),
+      onVoice: vi.fn(),
+    };
+
+    // halfway = floor(8 / 2) = index 4.
+    const { rerender } = renderStage(<QuestionStage {...props} index={4} />);
+    expect(screen.getByText("Halfway there.")).toBeInTheDocument();
+
+    // Moving away clears it.
+    rerender(
+      <TooltipProvider>
+        <QuestionStage {...props} index={3} />
+      </TooltipProvider>,
+    );
+    expect(screen.queryByText("Halfway there.")).not.toBeInTheDocument();
+
+    // Coming back must NOT replay it.
+    rerender(
+      <TooltipProvider>
+        <QuestionStage {...props} index={4} />
+      </TooltipProvider>,
+    );
+    expect(screen.queryByText("Halfway there.")).not.toBeInTheDocument();
+  });
+
+  it("stays silent on a short assessment", () => {
+    // Under six questions there is no meaningful midpoint to mark.
+    const few = Array.from({ length: 4 }, (_, i) => makeQ(`s${i}`));
+    renderStage(
+      <QuestionStage
+        questions={few}
+        index={2}
+        answers={{}}
+        meta={{}}
+        mode="en"
+        onAnswer={vi.fn()}
+        onNavigate={vi.fn()}
+        onBackToIntro={vi.fn()}
+        onReview={vi.fn()}
+        onSkip={vi.fn()}
+        onDwell={vi.fn()}
+        onVoice={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText("Halfway there.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Almost finished.")).not.toBeInTheDocument();
+  });
+
+  it("reports completion as a percentage of answers given, not screens passed", () => {
+    // A bar driven by position would credit a skipped question as progress.
+    const many = Array.from({ length: 8 }, (_, i) => makeQ(`p${i}`));
+    renderStage(
+      <QuestionStage
+        questions={many}
+        index={5}
+        answers={{ p0: 3, p1: 4 }}
+        meta={{}}
+        mode="en"
+        onAnswer={vi.fn()}
+        onNavigate={vi.fn()}
+        onBackToIntro={vi.fn()}
+        onReview={vi.fn()}
+        onSkip={vi.fn()}
+        onDwell={vi.fn()}
+        onVoice={vi.fn()}
+      />,
+    );
+    // On question 6 of 8, but only 2 of 8 answered.
+    expect(screen.getByText(/25% complete/)).toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "25");
+  });
+
   it("switches the whole interface to Telugu", () => {
     useI18nStore.setState({ mode: "te" });
     renderStage(
@@ -232,11 +398,15 @@ describe("assessment stages render", () => {
         questions={questions}
         index={0}
         answers={{}}
+        meta={{}}
         mode="te"
         onAnswer={vi.fn()}
         onNavigate={vi.fn()}
         onBackToIntro={vi.fn()}
         onReview={vi.fn()}
+        onSkip={vi.fn()}
+        onDwell={vi.fn()}
+        onVoice={vi.fn()}
       />,
     );
     // Progress, prompt and the Listen button all render in Telugu.

@@ -83,7 +83,9 @@ export function ThankYouStage({
             <Button
               onClick={() => window.print()}
               variant="outline"
-              className="mt-4 h-14 w-full gap-2 rounded-pill text-base"
+              size="xl"
+              shape="pill"
+              className="mt-4 w-full gap-2"
             >
               <Download className="h-[18px] w-[18px]" strokeWidth={1.8} />
               {t("downloadAcknowledgement")}
@@ -103,7 +105,7 @@ export function ThankYouStage({
           </div>
           <div>
             <div className="text-sm font-semibold">{t("appName")}</div>
-            <div className="text-xs text-neutral-600">{t("govOf")}</div>
+            <div className="text-xs text-neutral-600">{t("orgLine")}</div>
           </div>
         </div>
 

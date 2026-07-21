@@ -77,7 +77,7 @@ export default function DemoPreview() {
             </div>
             <div className="leading-tight">
               <div className="text-sm font-semibold tracking-tight">APFAP</div>
-              <div className="t-caption text-muted-foreground">AP Police</div>
+              <div className="t-caption text-muted-foreground">Family Assessment</div>
             </div>
           </div>
           <div className="ml-auto flex items-center gap-2">

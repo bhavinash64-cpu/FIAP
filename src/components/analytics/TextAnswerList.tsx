@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Search, ChevronLeft, ChevronRight, Loader2, MessageSquareText } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/survey/EmptyState";
-import { getTextAnswers, type TextAnswer } from "@/lib/analytics";
+import { getTextAnswers } from "@/lib/analytics";
 
 const PAGE_SIZE = 10;
 
@@ -11,21 +12,20 @@ export function TextAnswerList({ questionId }: { questionId: string }) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(0);
-  const [rows, setRows] = useState<TextAnswer[] | null>(null);
-  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     const t = setTimeout(() => { setDebouncedSearch(search); setPage(0); }, 300);
     return () => clearTimeout(t);
   }, [search]);
 
-  useEffect(() => {
-    setRows(null);
-    getTextAnswers(questionId, { search: debouncedSearch, limit: PAGE_SIZE, offset: page * PAGE_SIZE }).then((r) => {
-      setRows(r.rows);
-      setTotal(r.total);
-    });
-  }, [questionId, debouncedSearch, page]);
+  // Keyed query: cancellation + error handling are automatic, and a slow older
+  // page/search can never overwrite the current one.
+  const { data, isError } = useQuery({
+    queryKey: ["text-answers", questionId, debouncedSearch, page],
+    queryFn: () => getTextAnswers(questionId, { search: debouncedSearch, limit: PAGE_SIZE, offset: page * PAGE_SIZE }),
+  });
+  const rows = data?.rows;
+  const total = data?.total ?? 0;
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -36,7 +36,9 @@ export function TextAnswerList({ questionId }: { questionId: string }) {
         <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search responses…" className="pl-8 h-9 rounded-lg text-sm" />
       </div>
 
-      {rows === null ? (
+      {isError ? (
+        <div className="py-8 text-center text-sm text-muted-foreground">Couldn't load responses. Reload to try again.</div>
+      ) : rows === undefined ? (
         <div className="py-8 grid place-items-center"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
       ) : rows.length === 0 ? (
         <EmptyState icon={MessageSquareText} title="No responses yet" body={debouncedSearch ? "No answers match your search." : undefined} />

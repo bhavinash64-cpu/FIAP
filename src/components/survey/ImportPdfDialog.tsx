@@ -94,7 +94,12 @@ export function ImportPdfDialog({
   }
 
   async function handleAddToSurvey() {
-    const included = drafts.filter((d) => d.include);
+    // Trim and drop blank option lines at persist time (not while editing, so a
+    // newly-typed newline doesn't vanish) — an empty option becomes an empty,
+    // unlabelled answer button in the published survey.
+    const included = drafts
+      .filter((d) => d.include)
+      .map((d) => ({ ...d, options: d.options.map((o) => o.trim()).filter(Boolean) }));
     if (!included.length) return toast.error("Select at least one question to add.");
     setSaving(true);
     try {

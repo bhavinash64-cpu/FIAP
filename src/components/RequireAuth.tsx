@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
+import { hasRespondentSession } from "@/lib/familyAccess";
 
 /* The gate — the first surface anyone sees. It should feel like the product
    is thinking, not like a page is buffering. No spinner. */
@@ -13,6 +14,19 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading, isSuperAdmin } = useAuth();
   const reduce = useReducedMotion();
   const loc = useLocation();
+
+  /*
+     A signed-in family that types or follows an /app URL is sent back to their
+     own assessment, not to the administrator sign-in page. Checked before the
+     auth `loading` gate because a respondent holds no Supabase session at all —
+     waiting on one would leave them staring at a pulsing logo before landing on
+     a login form they have no credentials for. This is a redirect, never an
+     error: they have not done anything wrong, and the admin console must simply
+     not be a place they can arrive.
+  */
+  if (hasRespondentSession() && !user) {
+    return <Navigate to="/family/assessment" replace />;
+  }
 
   if (loading) {
     return (

@@ -40,7 +40,7 @@ export default function SettingsPage() {
 
   return (
     <PageContainer>
-      <PageHeader eyebrow={t("navGroupGovernance")} title={t("settingsTitle")} />
+      <PageHeader eyebrow={t("navGroupSystem")} title={t("settingsTitle")} />
 
       {/* Masonry-ish two columns on wide screens so sections fill the width
           instead of stacking in a narrow centred strip. */}

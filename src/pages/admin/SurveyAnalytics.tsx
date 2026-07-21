@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Download, FileText, Loader2, Share2, Users } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Download, FileText, Loader2, Share2, Users, SearchX } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,39 +12,26 @@ import { RangeSwitcher } from "@/components/analytics/RangeSwitcher";
 import { OverviewCards } from "@/components/analytics/OverviewCards";
 import { TimeseriesChart } from "@/components/analytics/TimeseriesChart";
 import { QuestionBreakdownCard } from "@/components/analytics/QuestionBreakdownCard";
-import { getSurveyWithQuestions, type Survey, type SurveyQuestion } from "@/lib/surveys";
-import { getResponsesForExport, getResponseTimeseries, getSurveyStats, rangeToSince, type RangeKey, type SurveyStats, type TimeseriesPoint } from "@/lib/analytics";
+import { getSurveyWithQuestions } from "@/lib/surveys";
+import { getResponsesForExport, getResponseTimeseries, getSurveyStats, rangeToSince, type RangeKey } from "@/lib/analytics";
 import { buildResponsesWorkbook, downloadBlob, slugifyFilename } from "@/lib/exportExcel";
 
 export default function SurveyAnalytics() {
   const { id } = useParams();
-  const [survey, setSurvey] = useState<Survey | null>(null);
-  const [questions, setQuestions] = useState<SurveyQuestion[] | null>(null);
   const [range, setRange] = useState<RangeKey>("30d");
-  const [stats, setStats] = useState<SurveyStats | null>(null);
-  const [series, setSeries] = useState<TimeseriesPoint[] | null>(null);
   const [exporting, setExporting] = useState(false);
 
-  useEffect(() => {
-    if (!id) return;
-    getSurveyWithQuestions(id).then((data) => {
-      if (!data) return;
-      setSurvey(data.survey);
-      setQuestions(data.questions);
-    });
-  }, [id]);
+  // React Query owns loading/error/race: a rejected fetch surfaces via isError
+  // (no permanent skeleton, no unhandled rejection), and because the timeseries
+  // is keyed by range, a fast range switch can never let an out-of-order
+  // response overwrite newer data. Stats are NOT keyed by range (getSurveyStats
+  // ignores it), so switching range no longer refetches them.
+  const detail = useQuery({ queryKey: ["survey-detail", id], queryFn: () => getSurveyWithQuestions(id!), enabled: !!id });
+  const { data: stats } = useQuery({ queryKey: ["survey-stats", id], queryFn: () => getSurveyStats(id!), enabled: !!id });
+  const { data: series } = useQuery({ queryKey: ["survey-timeseries", id, range], queryFn: () => getResponseTimeseries(id!, range), enabled: !!id });
 
-  useEffect(() => {
-    if (!id) return;
-    getSurveyStats(id).then(setStats);
-  }, [id, range]);
-
-  useEffect(() => {
-    if (!id) return;
-    setSeries(null);
-    getResponseTimeseries(id, range).then(setSeries);
-  }, [id, range]);
-
+  const survey = detail.data?.survey ?? null;
+  const questions = detail.data?.questions ?? null;
   const since = useMemo(() => rangeToSince(range).since, [range]);
 
   async function handleExportExcel() {
@@ -51,15 +39,42 @@ export default function SurveyAnalytics() {
     setExporting(true);
     try {
       const rows = await getResponsesForExport(survey.id, questions, since);
-      if (!rows.length) { toast.info("No responses in this time range to export."); return; }
+      if (!rows.length) {
+        toast.info("No responses in this time range to export.");
+        return;
+      }
       const blob = await buildResponsesWorkbook(survey, questions, rows);
       downloadBlob(blob, `${slugifyFilename(survey.title_en)}-responses.xlsx`);
-      toast.success("Excel file downloaded");
+      toast.success(`Exported ${rows.length} responses`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not build the export.");
     } finally {
       setExporting(false);
     }
+  }
+
+  // Missing / deleted survey, or a failed load — an explicit state, never an
+  // endless skeleton.
+  if (detail.isError || (detail.isSuccess && !detail.data)) {
+    return (
+      <div className="grid min-h-[60vh] w-full place-items-center px-6 text-center">
+        <div className="max-w-sm">
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-pill bg-accent-tint">
+            <SearchX className="h-7 w-7 text-primary" strokeWidth={1.5} />
+          </div>
+          <h1 className="mt-6 t-section">Survey not found</h1>
+          <p className="mx-auto mt-2 max-w-xs t-body text-muted-foreground">
+            This survey couldn't be loaded — it may have been deleted.
+          </p>
+          <Button asChild variant="outline" className="mt-6">
+            <Link to="/app/surveys">
+              <ArrowLeft strokeWidth={1.5} />
+              Back to surveys
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   if (!survey || !questions) {
@@ -128,7 +143,7 @@ export default function SurveyAnalytics() {
             <Card>
               <CardHeader><CardTitle>Responses over time</CardTitle></CardHeader>
               <CardContent>
-                {series === null ? <Skeleton className="h-[280px] rounded-field" /> : <TimeseriesChart data={series} />}
+                {series ? <TimeseriesChart data={series} /> : <Skeleton className="h-[280px] rounded-field" />}
               </CardContent>
             </Card>
           </section>

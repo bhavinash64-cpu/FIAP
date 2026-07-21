@@ -187,23 +187,87 @@ export interface ExportResponseRow {
   answers: Record<string, string>; // question_id -> display value
 }
 
+/**
+ * PostgREST/Supabase caps every unbounded select at the project's max_rows
+ * (1000 by default). An export that awaited a single select therefore lost
+ * every row past the first 1000 — silently. Both the responses and the (far
+ * larger) answers sets must be paged with .range() to be complete.
+ */
+const EXPORT_PAGE = 1000;
+
+interface RawResponse {
+  id: string;
+  submitted_at: string;
+  language: string;
+}
+interface RawAnswer {
+  response_id: string;
+  question_id: string;
+  value_text: string | null;
+  value_int: number | null;
+  value_json: unknown;
+}
+
+async function fetchAllResponses(surveyId: string, since?: Date): Promise<RawResponse[]> {
+  const out: RawResponse[] = [];
+  for (let from = 0; ; from += EXPORT_PAGE) {
+    let q = supabase
+      .from("survey_responses")
+      .select("id, submitted_at, language")
+      .eq("survey_id", surveyId)
+      .order("submitted_at")
+      .range(from, from + EXPORT_PAGE - 1);
+    if (since) q = q.gte("submitted_at", since.toISOString());
+    const { data, error } = await q;
+    if (error) throw error;
+    if (!data?.length) break;
+    out.push(...(data as RawResponse[]));
+    if (data.length < EXPORT_PAGE) break;
+  }
+  return out;
+}
+
+async function fetchAllAnswers(responseIds: string[]): Promise<RawAnswer[]> {
+  const out: RawAnswer[] = [];
+  // Keep the IN() list small so the request URL stays well under limits, and
+  // page each chunk since a survey has many answers per response.
+  const CHUNK = 300;
+  for (let i = 0; i < responseIds.length; i += CHUNK) {
+    const chunk = responseIds.slice(i, i + CHUNK);
+    for (let from = 0; ; from += EXPORT_PAGE) {
+      const { data, error } = await supabase
+        .from("survey_answers")
+        .select("response_id, question_id, value_text, value_int, value_json")
+        .in("response_id", chunk)
+        .range(from, from + EXPORT_PAGE - 1);
+      if (error) throw error;
+      if (!data?.length) break;
+      out.push(...(data as RawAnswer[]));
+      if (data.length < EXPORT_PAGE) break;
+    }
+  }
+  return out;
+}
+
+/** Exact response count for a period — a head/count query, no rows pulled. */
+export async function getResponseCount(surveyId: string, since?: Date): Promise<number> {
+  let q = supabase.from("survey_responses").select("id", { count: "exact", head: true }).eq("survey_id", surveyId);
+  if (since) q = q.gte("submitted_at", since.toISOString());
+  const { count, error } = await q;
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function getResponsesForExport(surveyId: string, questions: SurveyQuestion[], since?: Date): Promise<ExportResponseRow[]> {
-  let respQuery = supabase.from("survey_responses").select("id, submitted_at, language").eq("survey_id", surveyId).order("submitted_at");
-  if (since) respQuery = respQuery.gte("submitted_at", since.toISOString());
-  const { data: responses, error: rErr } = await respQuery;
-  if (rErr) throw rErr;
-  const ids = (responses ?? []).map((r) => r.id);
+  const responses = await fetchAllResponses(surveyId, since);
+  const ids = responses.map((r) => r.id);
   if (!ids.length) return [];
 
-  const { data: answers, error: aErr } = await supabase
-    .from("survey_answers")
-    .select("response_id, question_id, value_text, value_int, value_json")
-    .in("response_id", ids);
-  if (aErr) throw aErr;
+  const answers = await fetchAllAnswers(ids);
 
   const qById = new Map(questions.map((q) => [q.id, q]));
   const byResponse = new Map<string, Record<string, string>>();
-  for (const a of answers ?? []) {
+  for (const a of answers) {
     const q = qById.get(a.question_id);
     if (!q) continue;
     let display = "";
@@ -219,7 +283,7 @@ export async function getResponsesForExport(surveyId: string, questions: SurveyQ
     byResponse.set(a.response_id, bucket);
   }
 
-  return (responses ?? []).map((r) => ({
+  return responses.map((r) => ({
     responseId: r.id,
     submittedAt: r.submitted_at,
     language: r.language,

@@ -10,18 +10,12 @@ export function shareText(intro: string, url: string): string {
   return `${intro}\n\n${url}`;
 }
 
-export function whatsappHref(text: string): string {
-  return `https://wa.me/?text=${encodeURIComponent(text)}`;
-}
-
 /**
- * iOS wants `sms:&body=`, Android wants `sms:?body=`. `sms:?&body=` is the form
- * both parse, and it is what every cross-platform share sheet settles on.
+ * Email is the only messaging channel the platform hands out. WhatsApp and SMS
+ * deep links were removed deliberately: both push a confidential well-being
+ * link into a consumer messaging app, where it is retained, backed up and
+ * forwardable outside any channel this platform controls.
  */
-export function smsHref(text: string): string {
-  return `sms:?&body=${encodeURIComponent(text)}`;
-}
-
 export function mailtoHref(subject: string, body: string): string {
   return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }

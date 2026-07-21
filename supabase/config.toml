@@ -12,3 +12,8 @@ verify_jwt = true
 
 [functions.submit-response]
 verify_jwt = false
+
+# Respondents hold no Supabase JWT by design — the function authenticates them
+# itself, against the family case's own PIN and session token.
+[functions.family-access]
+verify_jwt = false

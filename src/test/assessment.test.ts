@@ -11,6 +11,7 @@ import {
   remainingSeconds,
 } from "@/lib/assessmentSession";
 import { interpolate } from "@/lib/i18n";
+import { categorizeQuestion, categoryClass } from "@/lib/questionCategory";
 import type { SurveyQuestion, AnswerValue } from "@/lib/surveys";
 
 function q(id: string, over: Partial<SurveyQuestion> = {}): SurveyQuestion {
@@ -165,6 +166,62 @@ describe("assessmentSession: time", () => {
 describe("assessmentSession: reference id", () => {
   it("formats a uuid into a readable, grouped reference", () => {
     expect(formatReferenceId("1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d")).toBe("1A2B-3C4D-5E6F");
+  });
+});
+
+describe("questionCategory: categorizeQuestion", () => {
+  const cat = (prompt_en: string) => categorizeQuestion(q("a", { prompt_en }));
+
+  it("places each seeded instrument in its own category", () => {
+    // CIUS
+    expect(cat("How often are you short of sleep because of the internet?")).toBe("internet");
+    // IRI
+    expect(cat("Before criticizing somebody, I try to imagine how I would feel if I were in their place.")).toBe("empathy");
+    // WHO-5
+    expect(cat("I have felt calm and relaxed.")).toBe("wellbeing");
+    // Trait Anger
+    expect(cat("I am a hot-headed person.")).toBe("anger");
+    // Hopelessness
+    expect(cat("My future seems dark to me.")).toBe("hope");
+    // PID-5-BF
+    expect(cat("I worry about almost everything.")).toBe("stress");
+  });
+
+  it("classifies BDI items, which arrive as a bare header word", () => {
+    // Each BDI item's four graded statements live in its options, so the prompt
+    // is only "Sadness" / "Guilt" / "Crying".
+    expect(cat("Sadness")).toBe("depression");
+    expect(cat("Suicidal thoughts")).toBe("depression");
+    expect(cat("Loss of interest in sex")).toBe("depression");
+  });
+
+  it("keeps BDI's 'Irritability' out of the anger bucket", () => {
+    // The exact-header pass must beat the generic /irritated/ rule, or a
+    // depression item would be washed as an anger item.
+    expect(cat("Irritability")).toBe("depression");
+    expect(cat("I get irritated easily by all sorts of things.")).toBe("anger");
+  });
+
+  it("prefers the internet reading over the affect the item is phrased with", () => {
+    // Reads as anger on every generic rule; it is a CIUS compulsion item.
+    expect(cat("How often do you feel restless, frustrated or irritated when you cannot use the internet?")).toBe("internet");
+  });
+
+  it("prefers family over the emotion an item carries", () => {
+    expect(cat("How often do others (e.g. partner, children, parents) say you should use the internet less?")).toBe("internet");
+    expect(cat("I feel supported by my family when things are difficult.")).toBe("family");
+  });
+
+  it("falls back to neutral rather than guessing", () => {
+    // A wrong atmosphere on a clinical item is worse than none at all.
+    expect(cat("Which district do you live in?")).toBe("neutral");
+    expect(cat("")).toBe("neutral");
+    expect(cat("People would describe me as reckless.")).toBe("stress");
+  });
+
+  it("maps every category to an atmosphere class", () => {
+    expect(categoryClass("depression")).toBe("atmo-depression");
+    expect(categoryClass("neutral")).toBe("atmo-neutral");
   });
 });
 

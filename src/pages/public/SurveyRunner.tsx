@@ -18,16 +18,21 @@ import {
 } from "@/lib/surveys";
 import {
   clearSession,
+  countAnswered,
+  emptyMeta,
   estimateSeconds,
   firstUnansweredIndex,
   formatReferenceId,
+  isAnswered,
   loadSession,
   loadSubmission,
   minutesFromSeconds,
   saveSession,
   saveSubmission,
+  type AnswerMeta,
   type Stage,
 } from "@/lib/assessmentSession";
+import { emojiForAnswer } from "@/lib/answerVisuals";
 import { renderBilingual, useLangMode, useT } from "@/lib/i18n";
 
 const EASE = [0.33, 1, 0.68, 1] as const;
@@ -51,6 +56,7 @@ export default function SurveyRunner() {
   const [stage, setStage] = useState<Stage>("welcome");
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
+  const [meta, setMeta] = useState<Record<string, AnswerMeta>>({});
   const [consented, setConsented] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submission, setSubmission] = useState<{ referenceId: string; submittedAt: string } | null>(null);
@@ -89,6 +95,7 @@ export default function SurveyRunner() {
     const saved = loadSession(surveyId);
     if (saved && Object.keys(saved.answers).length > 0) {
       setAnswers(saved.answers);
+      setMeta(saved.meta ?? {});
       setIndex(saved.index);
       setConsented(saved.consented);
       startedAt.current = new Date(saved.startedAt);
@@ -112,12 +119,13 @@ export default function SurveyRunner() {
     if (!surveyId || stage === "done" || stage === "welcome") return;
     saveSession(surveyId, {
       answers,
+      meta,
       index,
       stage,
       consented,
       startedAt: (startedAt.current ?? new Date()).toISOString(),
     });
-  }, [surveyId, answers, index, stage, consented]);
+  }, [surveyId, answers, meta, index, stage, consented]);
 
   const questions = useMemo(
     () => (typeof state !== "string" && state.kind === "open" ? state.questions : []),
@@ -126,23 +134,76 @@ export default function SurveyRunner() {
 
   const estimatedMinutes = useMemo(() => minutesFromSeconds(estimateSeconds(questions)), [questions]);
 
-  const setAnswer = useCallback((id: string, v: AnswerValue) => {
-    setAnswers((prev) => ({ ...prev, [id]: v }));
+  const questionById = useMemo(() => new Map(questions.map((q) => [q.id, q])), [questions]);
+
+  // Read through a ref rather than a dependency: `answers` changes on every
+  // keystroke in a long-text item, and the alternative is rebuilding these
+  // callbacks (and re-rendering the question stage) on each one.
+  const answersRef = useRef(answers);
+  answersRef.current = answers;
+
+  const patchMeta = useCallback((id: string, patch: Partial<AnswerMeta>) => {
+    setMeta((prev) => ({ ...prev, [id]: { ...emptyMeta(), ...prev[id], ...patch } }));
   }, []);
+
+  const setAnswer = useCallback(
+    (id: string, v: AnswerValue) => {
+      const hadAnswer = isAnswered(answersRef.current[id]);
+      const question = questionById.get(id);
+      setAnswers((prev) => ({ ...prev, [id]: v }));
+      // `edited` is read inside the updater, not from the `meta` render value:
+      // depending on `meta` here would rebuild this callback on every keystroke
+      // in a long-text answer and re-render the whole question stage with it.
+      setMeta((prev) => {
+        const cur = prev[id] ?? emptyMeta();
+        return {
+          ...prev,
+          [id]: {
+            ...cur,
+            // The glyph the respondent actually saw beside this choice, captured
+            // at the moment of choosing rather than re-derived at export time.
+            emoji: question ? emojiForAnswer(question, v) : null,
+            skipped: false,
+            edited: cur.edited || hadAnswer,
+            answeredAt: new Date().toISOString(),
+          },
+        };
+      });
+    },
+    [questionById],
+  );
+
+  const markSkipped = useCallback((id: string) => patchMeta(id, { skipped: true }), [patchMeta]);
+  const markVoice = useCallback((id: string) => patchMeta(id, { voiceUsed: true }), [patchMeta]);
+  const addDwell = useCallback(
+    (id: string, seconds: number) =>
+      setMeta((prev) => {
+        const cur = prev[id] ?? emptyMeta();
+        return { ...prev, [id]: { ...cur, seconds: cur.seconds + seconds } };
+      }),
+    [],
+  );
 
   async function handleSubmit() {
     if (submitLock.current || !surveyId) return;
     submitLock.current = true;
     setSubmitting(true);
     try {
-      const id = await submitSurveyResponse(surveyId, mode, answers, startedAt.current ?? undefined);
+      const id = await submitSurveyResponse(surveyId, mode, answers, {
+        meta,
+        startedAt: startedAt.current ?? undefined,
+        questionCount: questions.length,
+        answeredCount: countAnswered(questions, answers),
+      });
       const record = { referenceId: formatReferenceId(id), submittedAt: new Date().toISOString() };
       saveSubmission(surveyId, record);
       clearSession(surveyId);
       setSubmission(record);
       setStage("done");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("submitFailed"));
+    } catch {
+      // A parent sees a calm, translated message — never a raw English/backend
+      // error string in Telugu mode.
+      toast.error(t("submitFailed"));
       submitLock.current = false;
     } finally {
       setSubmitting(false);
@@ -187,7 +248,7 @@ export default function SurveyRunner() {
   }
 
   if (!questions.length) {
-    return <StatusScreen icon={SearchX} title={survey.title_en} body={t("noQuestionsYet")} />;
+    return <StatusScreen icon={SearchX} title={renderBilingual(mode, survey.title_en, survey.title_te).primary} body={t("noQuestionsYet")} />;
   }
 
   // ── Stages ──────────────────────────────────────────────────────────────
@@ -215,6 +276,7 @@ export default function SurveyRunner() {
         onStartOver={() => {
           clearSession(survey.id);
           setAnswers({});
+          setMeta({});
           setIndex(0);
           setConsented(false);
           setResumable(false);
@@ -266,11 +328,15 @@ export default function SurveyRunner() {
       questions={questions}
       index={Math.min(index, questions.length - 1)}
       answers={answers}
+      meta={meta}
       mode={mode}
       onAnswer={setAnswer}
       onNavigate={setIndex}
       onBackToIntro={() => setStage("instructions")}
       onReview={() => setStage("review")}
+      onSkip={markSkipped}
+      onDwell={addDwell}
+      onVoice={markVoice}
     />
   );
 }

@@ -26,6 +26,9 @@ export function QuestionLibraryDialog({
 
   useEffect(() => {
     if (!open) return;
+    // Fresh selection every time it opens — Cancel/Esc/overlay-close must never
+    // leave a stale, pre-checked selection to reappear on reopen.
+    setSelected(new Set());
     setBank(null);
     listBank()
       .then(setBank)

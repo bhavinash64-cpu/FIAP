@@ -7,14 +7,12 @@ import {
   Library,
   QrCode,
   Inbox,
-  FileSearch,
   BarChart3,
   FileText,
   Download,
-  Bell,
-  ScrollText,
   Settings,
   HelpCircle,
+  Users,
   LogOut,
   PanelLeft,
   ChevronDown,
@@ -31,42 +29,61 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 
 type NavT = { to: string; labelKey: DictKey; icon: LucideIcon; end?: boolean };
-type NavGroup = { labelKey: DictKey; items: NavT[] };
+/** `labelKey` is optional so the lead group can render as a bare row with no
+ *  eyebrow above it; `id` keeps React keys stable regardless. */
+type NavGroup = { id: string; labelKey?: DictKey; items: NavT[] };
 
 /**
  * Navigation, grouped by what an administrator is trying to do rather than by
- * one flat list. The Question Library sits under Surveys (it is the material
+ * one flat list. Dashboard leads unlabelled — a section header over a single
+ * item is noise. The Question Library sits under Surveys (it is the material
  * surveys are built from); distribution earns its own destination now that a
  * QR/link is the entire public entry path.
+ *
+ * Notifications and Audit Logs are deliberately absent: both pages and their
+ * routes still exist, they are just not first-class destinations in v1.
  */
 const NAV_GROUPS: NavGroup[] = [
   {
-    labelKey: "navGroupWorkspace",
+    id: "primary",
     items: [{ to: "/app", labelKey: "navOverview", icon: LayoutGrid, end: true }],
   },
   {
+    id: "surveys",
     labelKey: "navGroupSurveys",
     items: [
       { to: "/app/surveys", labelKey: "navSurveys", icon: ClipboardList },
-      { to: "/app/question-bank", labelKey: "navQuestionBank", icon: Library },
+      /* Question Library is hidden from navigation. It is authoring plumbing —
+         you reach it from inside the builder, at the moment you actually want to
+         pull a validated item in. As a top-level destination it invited people to
+         browse a bank of 300 questions with no survey in mind. The route and page
+         still exist; /app/question-bank works for anyone who bookmarked it. */
       { to: "/app/qr", labelKey: "navQr", icon: QrCode },
     ],
   },
   {
+    // Families leads the operational half of the console. A survey is now only
+    // ever reached through a family case, so this is where an officer's day
+    // actually starts — it earns a group of its own rather than a line under
+    // Surveys, which is authoring work and a different job.
+    id: "field",
+    labelKey: "navGroupField",
+    items: [{ to: "/app/families", labelKey: "navFamilies", icon: Users }],
+  },
+  {
+    id: "insights",
     labelKey: "navGroupInsights",
     items: [
       { to: "/app/responses", labelKey: "navResponses", icon: Inbox },
-      { to: "/app/response-explorer", labelKey: "navResponseExplorer", icon: FileSearch },
       { to: "/app/analytics", labelKey: "navAnalytics", icon: BarChart3 },
       { to: "/app/reports", labelKey: "navReports", icon: FileText },
       { to: "/app/export", labelKey: "navExport", icon: Download },
     ],
   },
   {
-    labelKey: "navGroupGovernance",
+    id: "system",
+    labelKey: "navGroupSystem",
     items: [
-      { to: "/app/notifications", labelKey: "navNotifications", icon: Bell },
-      { to: "/app/audit", labelKey: "navAudit", icon: ScrollText },
       { to: "/app/settings", labelKey: "navSettings", icon: Settings },
       { to: "/app/help", labelKey: "navHelp", icon: HelpCircle },
     ],
@@ -80,12 +97,15 @@ const ALL_NAV: NavT[] = NAV_GROUPS.flatMap((g) => g.items);
  * else sits one tap away in the More sheet. Four tabs + More across a 320px
  * screen keeps each cell above the touch minimum.
  */
-const BOTTOM_TAB_ROUTES = ["/app", "/app/surveys", "/app/responses", "/app/analytics"];
+/* Families displaces Analytics on the phone bar. Case work is what gets done
+   standing up in a village; analytics is a desk activity that survives being one
+   tap deeper in More. */
+const BOTTOM_TAB_ROUTES = ["/app", "/app/families", "/app/surveys", "/app/responses"];
 const BOTTOM_TABS = ALL_NAV.filter((n) => BOTTOM_TAB_ROUTES.includes(n.to));
 const MORE_GROUPS: NavGroup[] = NAV_GROUPS.map((g) => ({
   ...g,
   items: g.items.filter((n) => !BOTTOM_TAB_ROUTES.includes(n.to)),
-})).filter((g) => g.items.length);
+})).filter((g) => g.items.length > 0);
 const MORE_TABS = MORE_GROUPS.flatMap((g) => g.items);
 
 const COLLAPSED = 64;
@@ -96,13 +116,11 @@ const ROUTE_PREFETCH: Partial<Record<string, () => Promise<unknown>>> = {
   "/app/surveys": () => import("@/pages/admin/SurveyList"),
   "/app/question-bank": () => import("@/pages/admin/QuestionBank"),
   "/app/qr": () => import("@/pages/admin/QrManager"),
+  "/app/families": () => import("@/pages/admin/FamilyCases"),
   "/app/responses": () => import("@/pages/admin/Responses"),
-  "/app/response-explorer": () => import("@/pages/admin/ResponseExplorer"),
   "/app/analytics": () => import("@/pages/admin/AnalyticsHome"),
   "/app/reports": () => import("@/pages/admin/Reports"),
   "/app/export": () => import("@/pages/admin/ExportCenter"),
-  "/app/notifications": () => import("@/pages/admin/Notifications"),
-  "/app/audit": () => import("@/pages/AuditLog"),
   "/app/settings": () => import("@/pages/admin/SettingsPage"),
   "/app/help": () => import("@/pages/admin/HelpAbout"),
 };
@@ -169,19 +187,17 @@ function SidebarBody({ expanded }: { expanded: boolean }) {
         {expanded && (
           <div className="min-w-0 leading-tight">
             <div className="truncate t-card font-semibold tracking-tight">Jeevana Insight</div>
-            <div className="truncate t-caption text-muted-foreground">AP Police · Research</div>
+            <div className="truncate t-caption text-muted-foreground">{t("orgLine")}</div>
           </div>
         )}
       </div>
 
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto thin-scrollbar">
         {NAV_GROUPS.map((group, gi) => (
-          <div key={group.labelKey} className={cn(gi > 0 && "mt-3")}>
-            {expanded ? (
-              <div className="px-[11px] pb-1 pt-1 eyebrow">{t(group.labelKey)}</div>
-            ) : (
-              gi > 0 && <div className="mx-2 my-2 h-px bg-border" />
-            )}
+          <div key={group.id} className={cn(gi > 0 && "mt-3")}>
+            {expanded
+              ? group.labelKey && <div className="px-[11px] pb-1 pt-1 eyebrow">{t(group.labelKey)}</div>
+              : gi > 0 && <div className="mx-2 my-2 h-px bg-border" />}
             {group.items.map((item) => (
               <NavRow key={item.to} item={item} label={t(item.labelKey)} showText={expanded} />
             ))}
@@ -290,8 +306,8 @@ function BottomNav({ onSignOut }: { onSignOut: () => void }) {
           <DrawerTitle className="px-5 pb-2 t-section">{t("navMoreTitle")}</DrawerTitle>
           <div className="max-h-[65vh] overflow-y-auto px-3 pb-2 thin-scrollbar">
             {MORE_GROUPS.map((group) => (
-              <div key={group.labelKey} className="mb-1">
-                <div className="px-3 pb-1 pt-2 eyebrow">{t(group.labelKey)}</div>
+              <div key={group.id} className="mb-1">
+                {group.labelKey && <div className="px-3 pb-1 pt-2 eyebrow">{t(group.labelKey)}</div>}
                 {group.items.map((item) => (
                   <NavLink
                     key={item.to}

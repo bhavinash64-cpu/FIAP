@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,15 +19,17 @@ const SCALE_COLORS = [
 ];
 
 export function QuestionBreakdownCard({ question, since }: { question: SurveyQuestion; since?: Date }) {
-  const [counts, setCounts] = useState<ValueCount[] | null>(null);
   const isText = question.kind === "short_text" || question.kind === "long_text";
   const isScale = question.kind === "likert5" || question.kind === "rating5";
 
-  useEffect(() => {
-    if (isText) return;
-    setCounts(null);
-    getQuestionBreakdown(question, since).then(setCounts);
-  }, [question, since, isText]);
+  // React Query gives loading/error/cancellation — no unhandled rejection, no
+  // permanent spinner on failure, and stale results from a previous `since` can
+  // never overwrite the current one.
+  const { data: counts, isError } = useQuery({
+    queryKey: ["question-breakdown", question.id, since?.toISOString() ?? "all"],
+    queryFn: () => getQuestionBreakdown(question, since),
+    enabled: !isText,
+  });
 
   const total = counts?.reduce((a, c) => a + c.count, 0) ?? 0;
   const avg = counts ? averageScore(counts) : null;
@@ -45,7 +47,9 @@ export function QuestionBreakdownCard({ question, since }: { question: SurveyQue
       <CardContent>
         {isText ? (
           <TextAnswerList questionId={question.id} />
-        ) : counts === null ? (
+        ) : isError ? (
+          <div className="py-6 text-center text-sm text-muted-foreground">Couldn't load this breakdown. Reload to try again.</div>
+        ) : counts === undefined ? (
           <div className="py-10 grid place-items-center"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
         ) : total === 0 ? (
           <div className="py-6 text-center text-sm text-muted-foreground">No answers yet.</div>

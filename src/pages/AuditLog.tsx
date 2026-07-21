@@ -85,7 +85,7 @@ export default function AuditLog() {
   return (
     <PageContainer>
       <PageHeader
-        eyebrow={t("navGroupGovernance")}
+        eyebrow={t("navGroupSystem")}
         title={t("navAudit")}
         subtitle="An immutable record of every administrative action."
       />

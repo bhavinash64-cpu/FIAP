@@ -1,4 +1,4 @@
-import { memo, useCallback, useRef } from "react";
+import { memo, useCallback, useEffect, useRef } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Copy, GripVertical, Plus, Trash2, ChevronUp, ChevronDown } from "lucide-react";
@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { QuestionTypeIcon } from "@/components/survey/QuestionTypeIcon";
 import { OriginBadge } from "@/components/survey/OriginBadge";
 import { AutoTextarea } from "@/components/survey/builder/AutoTextarea";
-import { useBuilderStore, useQuestion } from "@/stores/builderStore";
+import { useBuilderStore, useQuestion, selectFiltering } from "@/stores/builderStore";
 import { QUESTION_KINDS, type QuestionKind } from "@/lib/surveys";
 import { cn } from "@/lib/utils";
 
@@ -34,7 +34,25 @@ export const QuestionRow = memo(function QuestionRow({ id, index }: { id: string
   const removeOption = useBuilderStore((s) => s.removeOption);
   const moveOption = useBuilderStore((s) => s.moveOption);
 
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  // Boolean selectors so a row only re-renders when ITS focused state flips (or
+  // filtering toggles) — never on every add elsewhere in the list.
+  const isFocused = useBuilderStore((s) => s.focusedId === id);
+  const setFocused = useBuilderStore((s) => s.setFocused);
+  const filtering = useBuilderStore(selectFiltering);
+
+  // Enter-adds-the-next-question focuses that new row (the documented Notion
+  // behaviour), then clears the flag so it fires exactly once.
+  useEffect(() => {
+    if (isFocused) {
+      promptRef.current?.focus();
+      setFocused(null);
+    }
+  }, [isFocused, setFocused]);
+
+  // A filtered list is a subset, so a drag against a visible neighbour can't be
+  // resolved into the full order without misplacing hidden rows — disable
+  // reordering until the filters are cleared.
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: filtering });
 
   const onPromptKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -72,16 +90,21 @@ export const QuestionRow = memo(function QuestionRow({ id, index }: { id: string
       )}
     >
       <div className="flex items-start gap-2 p-3 sm:p-4">
-        {/* Drag handle — fades in on hover so the resting state stays clean. */}
-        <button
-          type="button"
-          {...attributes}
-          {...listeners}
-          className="mt-1 h-7 w-6 shrink-0 grid place-items-center rounded-control text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 cursor-grab active:cursor-grabbing touch-none"
-          aria-label={`Reorder question ${index + 1}`}
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
+        {/* Drag handle — fades in on hover so the resting state stays clean.
+            Hidden while filtering, when reordering is disabled. */}
+        {filtering ? (
+          <span className="mt-1 h-7 w-6 shrink-0" aria-hidden />
+        ) : (
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            className="mt-1 h-7 w-6 shrink-0 grid place-items-center rounded-control text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 cursor-grab active:cursor-grabbing touch-none"
+            aria-label={`Reorder question ${index + 1}`}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+        )}
 
         <span className="mt-2 w-6 shrink-0 t-caption font-mono text-muted-foreground/70 tabular-nums">{index + 1}</span>
 

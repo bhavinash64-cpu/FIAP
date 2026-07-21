@@ -14,7 +14,17 @@ import { cn } from "@/lib/utils";
  * changes, narration of the previous question is stopped before anything else
  * happens — the alternative is question 13 being read over question 12.
  */
-export function VoiceControl({ text, resetKey }: { text: string; resetKey: string }) {
+export function VoiceControl({
+  text,
+  resetKey,
+  onSpoken,
+}: {
+  text: string;
+  resetKey: string;
+  /** Fires the first time narration starts for this `resetKey`, so the stage
+   *  can record that the respondent needed the question read aloud. */
+  onSpoken?: () => void;
+}) {
   const lang = useLang();
   const t = useT();
   const narrator = useNarrator(lang);
@@ -27,9 +37,11 @@ export function VoiceControl({ text, resetKey }: { text: string; resetKey: strin
   const speakRef = useRef(narrator.speak);
   const stopRef = useRef(narrator.stop);
   const textRef = useRef(text);
+  const spokenRef = useRef(onSpoken);
   speakRef.current = narrator.speak;
   stopRef.current = narrator.stop;
   textRef.current = text;
+  spokenRef.current = onSpoken;
 
   useEffect(() => {
     stopRef.current();
@@ -40,6 +52,7 @@ export function VoiceControl({ text, resetKey }: { text: string; resetKey: strin
     const id = window.setTimeout(() => {
       speakRef.current(textRef.current);
       setHasSpoken(true);
+      spokenRef.current?.();
     }, 220);
     return () => window.clearTimeout(id);
   }, [resetKey, autoplay, lang]);
@@ -53,7 +66,8 @@ export function VoiceControl({ text, resetKey }: { text: string; resetKey: strin
               type="button"
               variant="outline"
               disabled
-              className="h-12 gap-2 rounded-pill px-5 text-base"
+              shape="pill"
+              className="gap-2 px-5"
               aria-label={t("voiceUnavailable")}
             >
               <VolumeX className="h-[18px] w-[18px]" strokeWidth={1.8} />
@@ -74,6 +88,7 @@ export function VoiceControl({ text, resetKey }: { text: string; resetKey: strin
     if (paused) return narrator.resume();
     narrator.speak(text);
     setHasSpoken(true);
+    onSpoken?.();
   }
 
   const primaryLabel = speaking ? t("pause") : paused ? t("resume") : t("listen");
@@ -88,7 +103,8 @@ export function VoiceControl({ text, resetKey }: { text: string; resetKey: strin
         type="button"
         variant={speaking || paused ? "default" : "outline"}
         onClick={primaryAction}
-        className="h-12 gap-2 rounded-pill px-5 text-base"
+        shape="pill"
+        className="gap-2 px-5"
       >
         <PrimaryIcon className={cn("h-[18px] w-[18px]", speaking && "animate-pulse")} strokeWidth={1.8} />
         {primaryLabel}
@@ -99,11 +115,14 @@ export function VoiceControl({ text, resetKey }: { text: string; resetKey: strin
           <Button
             type="button"
             variant="ghost"
+            aria-label={t("replay")}
             onClick={() => {
               narrator.replay();
               setHasSpoken(true);
+              onSpoken?.();
             }}
-            className="h-12 gap-2 rounded-pill px-4 text-base text-muted-foreground"
+            shape="pill"
+            className="gap-2 px-4 text-muted-foreground"
           >
             <RotateCcw className="h-[18px] w-[18px]" strokeWidth={1.8} />
             <span className="hidden sm:inline">{t("replay")}</span>
@@ -114,7 +133,8 @@ export function VoiceControl({ text, resetKey }: { text: string; resetKey: strin
               <Button
                 type="button"
                 variant="ghost"
-                className="h-12 gap-2 rounded-pill px-4 text-base text-muted-foreground"
+                shape="pill"
+                className="gap-2 px-4 text-muted-foreground"
                 aria-label={t("speed")}
               >
                 <Gauge className="h-[18px] w-[18px]" strokeWidth={1.8} />
