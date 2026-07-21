@@ -8,8 +8,15 @@ import { TextAnswerList } from "@/components/analytics/TextAnswerList";
 import { getQuestionBreakdown, averageScore, type ValueCount } from "@/lib/analytics";
 import type { SurveyQuestion } from "@/lib/surveys";
 
-const BAR_COLOR = "hsl(226 64% 24%)";
-const SCALE_COLORS = ["hsl(4 68% 58%)", "hsl(38 88% 55%)", "hsl(220 14% 65%)", "hsl(152 55% 45%)", "hsl(226 64% 34%)"];
+const BAR_COLOR = "hsl(var(--primary))";
+// One accent, a light→dark indigo ramp — never a rainbow.
+const SCALE_COLORS = [
+  "hsl(var(--primary) / 0.32)",
+  "hsl(var(--primary) / 0.48)",
+  "hsl(var(--primary) / 0.64)",
+  "hsl(var(--primary) / 0.82)",
+  "hsl(var(--primary))",
+];
 
 export function QuestionBreakdownCard({ question, since }: { question: SurveyQuestion; since?: Date }) {
   const [counts, setCounts] = useState<ValueCount[] | null>(null);
@@ -26,10 +33,10 @@ export function QuestionBreakdownCard({ question, since }: { question: SurveyQue
   const avg = counts ? averageScore(counts) : null;
 
   return (
-    <Card className="rounded-2xl border-border/70">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-start gap-2.5">
-          <div className="h-8 w-8 rounded-lg bg-accent grid place-items-center shrink-0 mt-0.5">
+    <Card>
+      <CardHeader className="pb-4">
+        <CardTitle className="flex items-start gap-3">
+          <div className="h-8 w-8 rounded-control bg-accent-tint grid place-items-center shrink-0 mt-0.5">
             <QuestionTypeIcon kind={question.kind} className="h-4 w-4 text-primary" />
           </div>
           <span className="leading-snug">{question.prompt_en}</span>
@@ -45,18 +52,18 @@ export function QuestionBreakdownCard({ question, since }: { question: SurveyQue
         ) : isScale ? (
           <div className="space-y-4">
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-semibold tabular-nums">{avg?.toFixed(1)}</span>
+              <span className="t-title tabular-nums">{avg?.toFixed(1)}</span>
               <span className="text-sm text-muted-foreground">average of 5 · {total} answer{total === 1 ? "" : "s"}</span>
             </div>
-            <div className="flex h-3 w-full rounded-full overflow-hidden bg-muted">
+            <div className="flex h-3 w-full rounded-pill overflow-hidden bg-muted">
               {counts.map((c, i) => (
                 <div key={c.value} style={{ width: `${c.pct * 100}%`, backgroundColor: SCALE_COLORS[i % SCALE_COLORS.length] }} title={`${c.label}: ${c.count}`} />
               ))}
             </div>
-            <div className="grid grid-cols-5 gap-1.5 text-[11px] text-muted-foreground">
+            <div className="grid grid-cols-5 gap-1.5 t-caption text-muted-foreground">
               {counts.map((c, i) => (
                 <div key={c.value} className="text-center">
-                  <div className="h-2 w-2 rounded-full mx-auto mb-1" style={{ backgroundColor: SCALE_COLORS[i % SCALE_COLORS.length] }} />
+                  <div className="h-2 w-2 rounded-pill mx-auto mb-1" style={{ backgroundColor: SCALE_COLORS[i % SCALE_COLORS.length] }} />
                   {Math.round(c.pct * 100)}%
                 </div>
               ))}
@@ -82,7 +89,7 @@ export function QuestionBreakdownCard({ question, since }: { question: SurveyQue
       </CardContent>
       {!isText && total > 0 && (
         <div className="px-6 pb-4 -mt-2">
-          <Badge variant="secondary" className="text-[10px]">{total} response{total === 1 ? "" : "s"}</Badge>
+          <Badge variant="secondary" className="t-caption">{total} response{total === 1 ? "" : "s"}</Badge>
         </div>
       )}
     </Card>

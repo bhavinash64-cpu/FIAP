@@ -4,6 +4,7 @@ import { ArrowLeft, Download, FileText, Loader2, Share2, Users } from "lucide-re
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/survey/EmptyState";
 import { ShareLinkCard } from "@/components/survey/ShareLinkCard";
 import { RangeSwitcher } from "@/components/analytics/RangeSwitcher";
@@ -62,61 +63,84 @@ export default function SurveyAnalytics() {
   }
 
   if (!survey || !questions) {
-    return <div className="min-h-[50vh] grid place-items-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+    return (
+      <div className="w-full space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="space-y-3">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-8 w-72" />
+        </div>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-surface" />
+          ))}
+        </div>
+        <Skeleton className="h-[320px] rounded-surface" />
+      </div>
+    );
   }
 
   const hasResponses = (stats?.totalResponses ?? 0) > 0;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 space-y-6">
+    <div className="w-full px-4 py-6 sm:px-6 sm:py-8 lg:px-8 space-y-8">
       <div>
-        <Button asChild variant="ghost" size="sm" className="-ml-2"><Link to={`/app/surveys/${survey.id}/edit`}><ArrowLeft className="h-4 w-4 mr-1.5" />Back to editor</Link></Button>
-        <div className="mt-2 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <Button asChild variant="ghost" size="sm" className="-ml-2">
+          <Link to={`/app/surveys/${survey.id}/edit`}><ArrowLeft className="mr-2" strokeWidth={1.5} />Back to editor</Link>
+        </Button>
+        <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-primary">Analytics</div>
-            <h1 className="mt-1 text-2xl sm:text-3xl font-semibold tracking-tight">{survey.title_en}</h1>
+            <div className="eyebrow text-primary">Analytics</div>
+            <h1 className="t-section mt-2">{survey.title_en}</h1>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3">
             <RangeSwitcher value={range} onChange={setRange} />
-            <Button variant="outline" size="sm" className="rounded-lg" onClick={handleExportExcel} disabled={exporting}>
-              {exporting ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}Excel
+            <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={exporting}>
+              {exporting ? <Loader2 className="mr-2 animate-spin" strokeWidth={1.5} /> : <Download className="mr-2" strokeWidth={1.5} />}Excel
             </Button>
-            <Button asChild variant="outline" size="sm" className="rounded-lg">
-              <Link to={`/app/surveys/${survey.id}/report?range=${range}`} target="_blank"><FileText className="h-3.5 w-3.5 mr-1.5" />PDF report</Link>
+            <Button asChild variant="outline" size="sm">
+              <Link to={`/app/surveys/${survey.id}/report?range=${range}`} target="_blank"><FileText className="mr-2" strokeWidth={1.5} />PDF report</Link>
             </Button>
           </div>
         </div>
       </div>
 
       {!hasResponses ? (
-        <Card className="rounded-2xl border-dashed border-border/70">
+        <Card className="border-dashed">
           <EmptyState
             icon={Users}
-            title="No responses yet"
-            body="Share your survey link to start collecting responses."
+            title="Analytics come to life with your first responses"
+            body="Once families begin answering, this page tells the story: your key metrics at the top, the response trend over time, and a breakdown of every question — completion, distributions, and the exact answers given."
             action={survey.slug ? <div className="w-full max-w-md"><ShareLinkCard slug={survey.slug} /></div> : (
-              <Button asChild className="rounded-xl"><Link to={`/app/surveys/${survey.id}/edit`}><Share2 className="h-4 w-4 mr-1.5" />Publish this survey</Link></Button>
+              <Button asChild><Link to={`/app/surveys/${survey.id}/edit`}><Share2 className="mr-2" strokeWidth={1.5} />Publish this survey</Link></Button>
             )}
           />
         </Card>
       ) : (
-        <>
-          <OverviewCards stats={stats} />
+        <div className="space-y-10">
+          {/* The story, top to bottom: the numbers, then the trend, then each question. */}
+          <section>
+            <h2 className="mb-4 eyebrow text-primary">Key metrics</h2>
+            <OverviewCards stats={stats} />
+          </section>
 
-          <Card className="rounded-2xl border-border/70">
-            <CardHeader className="pb-2"><CardTitle className="text-base">Responses over time</CardTitle></CardHeader>
-            <CardContent>
-              {series === null ? <div className="h-[280px] grid place-items-center"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div> : <TimeseriesChart data={series} />}
-            </CardContent>
-          </Card>
+          <section>
+            <h2 className="mb-4 eyebrow text-primary">Response trend</h2>
+            <Card>
+              <CardHeader><CardTitle>Responses over time</CardTitle></CardHeader>
+              <CardContent>
+                {series === null ? <Skeleton className="h-[280px] rounded-field" /> : <TimeseriesChart data={series} />}
+              </CardContent>
+            </Card>
+          </section>
 
-          <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Per-question breakdown</h2>
-            <div className="grid gap-4 lg:grid-cols-2">
+          <section>
+            <h2 className="mb-1 eyebrow text-primary">Question-level analysis</h2>
+            <p className="mb-4 t-caption text-muted-foreground">Completion and the distribution of answers for every question.</p>
+            <div className="grid gap-6 lg:grid-cols-2">
               {questions.map((q) => <QuestionBreakdownCard key={q.id} question={q} since={since} />)}
             </div>
-          </div>
-        </>
+          </section>
+        </div>
       )}
     </div>
   );

@@ -5,15 +5,40 @@ export default {
   darkMode: ["class"],
   content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   prefix: "",
+  // Compile every `hover:` utility inside @media (hover: hover) so hover styles
+  // never "stick" after a tap on touch devices — a lifted card or slid arrow
+  // would otherwise stay transformed until the next tap.
+  future: { hoverOnlyWhenSupported: true },
   theme: {
-    container: { center: true, padding: "1.5rem", screens: { "2xl": "1400px" } },
+    container: {
+      center: true,
+      // 320px screens cannot afford 24px gutters on both sides; 1024+ keeps the
+      // 1.5rem the desktop design was built against.
+      padding: { DEFAULT: "1rem", xs: "1.25rem", sm: "1.5rem", lg: "1.5rem" },
+      screens: { "2xl": "1400px" },
+    },
+    screens: {
+      // 320 is the mobile-first base and needs no breakpoint. `xs` splits the
+      // small phones (320–374) from the 375/390/414 class, which can afford a
+      // little more gutter and a second column in places 320 cannot.
+      xs: "375px",
+      sm: "640px",
+      md: "768px",   // tablet — collapsible sidebar starts here
+      lg: "1024px",  // desktop — full sidebar, layout frozen as designed
+      xl: "1280px",
+      "2xl": "1536px",
+    },
     extend: {
       colors: {
         border: "hsl(var(--border))",
+        "border-strong": "hsl(var(--border-strong))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        canvas: "hsl(var(--bg-canvas))",
+        sunken: "hsl(var(--bg-sunken))",
+        tertiary: "hsl(var(--text-tertiary))",
         surface: {
           DEFAULT: "hsl(var(--surface))",
           elevated: "hsl(var(--surface-elevated))",
@@ -22,12 +47,21 @@ export default {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
           hover: "hsl(var(--primary-hover))",
+          active: "hsl(var(--primary-active))",
+          tint: "hsl(var(--primary-tint))",
           glow: "hsl(var(--primary-glow))",
         },
         secondary: { DEFAULT: "hsl(var(--secondary))", foreground: "hsl(var(--secondary-foreground))" },
         destructive: { DEFAULT: "hsl(var(--destructive))", foreground: "hsl(var(--destructive-foreground))" },
+        danger: { DEFAULT: "hsl(var(--danger))", foreground: "hsl(var(--destructive-foreground))" },
+        "brand-navy": "hsl(var(--brand-navy))",
         muted: { DEFAULT: "hsl(var(--muted))", foreground: "hsl(var(--muted-foreground))" },
-        accent: { DEFAULT: "hsl(var(--accent))", foreground: "hsl(var(--accent-foreground))" },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+          lavender: "hsl(var(--accent-lavender))",
+          tint: "hsl(var(--accent-tint))",
+        },
         success: { DEFAULT: "hsl(var(--success))", foreground: "hsl(var(--success-foreground))" },
         warning: { DEFAULT: "hsl(var(--warning))", foreground: "hsl(var(--warning-foreground))" },
         popover: { DEFAULT: "hsl(var(--popover))", foreground: "hsl(var(--popover-foreground))" },
@@ -43,21 +77,47 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
       },
+      fontFamily: {
+        sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Noto Sans Telugu", "system-ui", "sans-serif"],
+        editorial: ["Fraunces", "Georgia", "ui-serif", "serif"],
+      },
       backgroundImage: {
         "gradient-primary": "var(--gradient-primary)",
         "gradient-hero": "var(--gradient-hero)",
-        "gradient-subtle": "var(--gradient-subtle)",
+        "gradient-glow": "var(--gradient-glow)",
       },
       boxShadow: {
+        xs: "var(--shadow-xs)",
         sm: "var(--shadow-sm)",
         md: "var(--shadow-md)",
+        float: "var(--shadow-float)",
         lg: "var(--shadow-lg)",
-        glow: "var(--shadow-glow)",
+        highlight: "var(--highlight-top)",
+      },
+      transitionTimingFunction: {
+        out: "var(--ease-out)",
+        "in-out": "var(--ease-in-out)",
+        spring: "var(--ease-spring)",
+      },
+      transitionDuration: {
+        fast: "140ms",
+        base: "220ms",
+        slow: "380ms",
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 4px)",
         sm: "calc(var(--radius) - 8px)",
+        control: "var(--radius-control)",
+        field: "var(--radius-field)",
+        surface: "var(--radius-surface)",
+        nav: "var(--radius-nav)",
+        pill: "var(--radius-pill)",
+        btn: "var(--radius-button)",
+        input: "var(--radius-input)",
+        card: "var(--radius-card)",
+        modal: "var(--radius-modal)",
+        sidebar: "var(--radius-sidebar)",
       },
       keyframes: {
         "accordion-down": { from: { height: "0" }, to: { height: "var(--radix-accordion-content-height)" } },

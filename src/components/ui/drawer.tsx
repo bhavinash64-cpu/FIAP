@@ -18,7 +18,7 @@ const DrawerOverlay = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
-  <DrawerPrimitive.Overlay ref={ref} className={cn("fixed inset-0 z-50 bg-black/80", className)} {...props} />
+  <DrawerPrimitive.Overlay ref={ref} className={cn("fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm", className)} {...props} />
 ));
 DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName;
 
@@ -31,12 +31,19 @@ const DrawerContent = React.forwardRef<
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background",
+        // Capped at 92dvh so a long sheet always shows the page behind it —
+        // the affordance that tells you it's dismissable. Token radius/border
+        // rather than the stock rounded-[10px]/bg-black.
+        "fixed inset-x-0 bottom-0 z-50 flex h-auto max-h-[92dvh] flex-col rounded-t-surface border border-b-0 border-border bg-card shadow-[var(--shadow-float)]",
         className,
       )}
       {...props}
     >
-      <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
+      {/* Grab handle — 44px of vertical padding around a 4px bar, so the drag
+          affordance is thumb-sized without looking heavy. */}
+      <div className="mx-auto w-full shrink-0 cursor-grab py-3 active:cursor-grabbing">
+        <div className="mx-auto h-1 w-10 rounded-pill bg-border-strong" />
+      </div>
       {children}
     </DrawerPrimitive.Content>
   </DrawerPortal>
@@ -49,7 +56,11 @@ const DrawerHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
 DrawerHeader.displayName = "DrawerHeader";
 
 const DrawerFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("mt-auto flex flex-col gap-2 p-4", className)} {...props} />
+  <div
+    className={cn("mt-auto flex flex-col gap-2 p-4", className)}
+    style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+    {...props}
+  />
 );
 DrawerFooter.displayName = "DrawerFooter";
 

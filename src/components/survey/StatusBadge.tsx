@@ -10,5 +10,5 @@ const CONFIG: Record<SurveyStatus, { label: string; className: string }> = {
 
 export function StatusBadge({ status, className }: { status: SurveyStatus; className?: string }) {
   const c = CONFIG[status];
-  return <Badge variant="outline" className={cn(c.className, "rounded-full font-medium", className)}>{c.label}</Badge>;
+  return <Badge variant="outline" className={cn(c.className, "rounded-pill font-medium", className)}>{c.label}</Badge>;
 }

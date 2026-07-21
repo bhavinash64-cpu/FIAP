@@ -32,20 +32,20 @@ export function OptionsEditor({
             value={o.label_en}
             onChange={(e) => onUpdate(o.id, { label_en: e.target.value })}
             placeholder="Option (English)"
-            className="h-9 rounded-lg text-sm"
+            className="h-9 rounded-field text-sm"
           />
           <Input
             value={o.label_te ?? ""}
             onChange={(e) => onUpdate(o.id, { label_te: e.target.value })}
             placeholder="తెలుగు"
-            className="h-9 rounded-lg text-sm"
+            className="h-9 rounded-field text-sm"
           />
           <Button type="button" size="icon" variant="ghost" onClick={() => onDelete(o.id)} disabled={options.length <= 2} className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive">
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       ))}
-      <Button type="button" size="sm" variant="outline" onClick={onAdd} className="rounded-lg h-8 text-xs">
+      <Button type="button" size="sm" variant="outline" onClick={onAdd} className="rounded-control h-8 t-caption">
         <Plus className="h-3.5 w-3.5 mr-1" /> Add option
       </Button>
     </div>
