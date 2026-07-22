@@ -341,6 +341,51 @@ export const dict = {
   generating: { en: "Generating…", te: "రూపొందిస్తోంది…" },
   nothingToExport: { en: "No responses match these filters.", te: "ఈ ఫిల్టర్లకు సరిపోయే స్పందనలు లేవు." },
 
+  // ── Administrator sign-in ────────────────────────────────────────────────
+  // The /auth page shipped with every string hardcoded in English, so the
+  // language toggle sitting in its own corner switched `mode` and changed
+  // nothing on screen. These are the strings that were inline.
+  authPrivateWorkspace: { en: "Private workspace", te: "ప్రైవేట్ వర్క్‌స్పేస్" },
+  authHeadlineLine1: { en: "Every response", te: "ప్రతి స్పందన" },
+  authHeadlineLine2: { en: "tells", te: "ఒక కథను" },
+  authHeadlineAccent: { en: "a story.", te: "చెబుతుంది." },
+  authLede: {
+    en: "A secure, intelligent platform to create, publish and analyse family assessment surveys. Your data stays private. Your insights create impact.",
+    te: "కుటుంబ మూల్యాంకన సర్వేలను రూపొందించడానికి, ప్రచురించడానికి, విశ్లేషించడానికి ఒక సురక్షిత వేదిక. మీ డేటా గోప్యంగా ఉంటుంది. మీ అంతర్దృష్టులు మార్పును తీసుకొస్తాయి.",
+  },
+  authTrustPrivate: { en: "Private", te: "గోప్యం" },
+  authTrustSecure: { en: "Secure", te: "సురక్షితం" },
+  authTrustTrusted: { en: "Trusted", te: "విశ్వసనీయం" },
+  authTrustSuffix: { en: "— authorized access only", te: "— అధీకృత ప్రవేశం మాత్రమే" },
+  authWelcomeBack: { en: "Welcome back", te: "తిరిగి స్వాగతం" },
+  authSignInSubtitle: {
+    en: "Sign in to continue to your secure workspace",
+    te: "మీ సురక్షిత వర్క్‌స్పేస్‌కు కొనసాగడానికి సైన్ ఇన్ చేయండి",
+  },
+  authEmailLabel: { en: "Email address", te: "ఇమెయిల్ చిరునామా" },
+  authEmailPlaceholder: { en: "admin@example.com", te: "admin@example.com" },
+  authPasswordLabel: { en: "Password", te: "పాస్‌వర్డ్" },
+  authPasswordPlaceholder: { en: "Enter your password", te: "మీ పాస్‌వర్డ్ నమోదు చేయండి" },
+  authShowPassword: { en: "Show password", te: "పాస్‌వర్డ్ చూపించు" },
+  authHidePassword: { en: "Hide password", te: "పాస్‌వర్డ్ దాచు" },
+  authFooterNote: {
+    en: "Private workspace for authorized administrators",
+    te: "అధీకృత నిర్వాహకుల కోసం ప్రైవేట్ వర్క్‌స్పేస్",
+  },
+  authInvalidEmail: { en: "Enter a valid email address.", te: "సరైన ఇమెయిల్ చిరునామా నమోదు చేయండి." },
+  authEnterPassword: { en: "Enter your password.", te: "మీ పాస్‌వర్డ్ నమోదు చేయండి." },
+  authErrUnconfirmed: {
+    en: "This account hasn't been confirmed yet. Please contact your administrator.",
+    te: "ఈ ఖాతా ఇంకా ధృవీకరించబడలేదు. దయచేసి మీ నిర్వాహకుడిని సంప్రదించండి.",
+  },
+  // One message for a wrong password AND a non-existent account — telling them
+  // apart would let someone enumerate which emails are registered.
+  authErrInvalid: { en: "The email or password is incorrect.", te: "ఇమెయిల్ లేదా పాస్‌వర్డ్ సరైనది కాదు." },
+  authErrGeneric: {
+    en: "Couldn't sign in right now. Please check your connection and try again.",
+    te: "ప్రస్తుతం సైన్ ఇన్ చేయలేకపోయాము. దయచేసి మీ కనెక్షన్‌ను సరిచూసి మళ్లీ ప్రయత్నించండి.",
+  },
+
   // ── Settings ─────────────────────────────────────────────────────────────
   settingsTitle: { en: "Settings", te: "సెట్టింగ్‌లు" },
   settingsGeneral: { en: "General", te: "సాధారణం" },

@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { LangToggle } from "@/components/LangToggle";
 import { Logo } from "@/components/Logo";
 import { AuthIllustration } from "@/components/auth/AuthIllustration";
+import { useT, type Translator } from "@/lib/i18n";
 import { toast } from "sonner";
 
 /* ────────────────────────────────────────────────────────────────────────
@@ -23,21 +24,24 @@ import { toast } from "sonner";
 const EASE = [0.33, 1, 0.68, 1] as const;
 const emailSchema = z.string().trim().email();
 
-function describeAuthError(message: string): string {
+/**
+ * Takes the translator so the message a signed-out administrator reads is in
+ * the language they picked. Supabase's own error strings are English-only and
+ * are matched on, never shown — no backend or provider detail is exposed.
+ */
+function describeAuthError(message: string, t: Translator): string {
   const m = message.toLowerCase();
-  if (m.includes("email not confirmed"))
-    return "This account hasn't been confirmed yet. Please contact your administrator.";
+  if (m.includes("email not confirmed")) return t("authErrUnconfirmed");
   // One message for both a wrong password and a non-existent account — telling
-  // them apart would let an attacker enumerate which emails are registered. No
-  // backend/provider details are exposed either.
-  if (m.includes("invalid login credentials") || m.includes("user not found"))
-    return "The email or password is incorrect.";
-  return "Couldn't sign in right now. Please check your connection and try again.";
+  // them apart would let an attacker enumerate which emails are registered.
+  if (m.includes("invalid login credentials") || m.includes("user not found")) return t("authErrInvalid");
+  return t("authErrGeneric");
 }
 
 export default function Auth() {
   const nav = useNavigate();
   const reduce = useReducedMotion();
+  const t = useT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPw, setShowPw] = useState(false);
@@ -58,14 +62,14 @@ export default function Auth() {
     const fd = new FormData(e.currentTarget);
     const email = String(fd.get("email"));
     const password = String(fd.get("password"));
-    if (!emailSchema.safeParse(email).success) return setError("Enter a valid email address.");
-    if (password.length < 1) return setError("Enter your password.");
+    if (!emailSchema.safeParse(email).success) return setError(t("authInvalidEmail"));
+    if (password.length < 1) return setError(t("authEnterPassword"));
 
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
-    if (error) return setError(describeAuthError(error.message));
-    toast.success("Welcome back");
+    if (error) return setError(describeAuthError(error.message, t));
+    toast.success(t("authWelcomeBack"));
   }
 
   const container: Variants = {
@@ -153,28 +157,44 @@ export default function Auth() {
               className="w-full max-w-[30rem] shrink-0"
             >
               <motion.p variants={item} className="eyebrow" style={{ color: "#5E43F3" }}>
-                Private workspace
+                {t("authPrivateWorkspace")}
               </motion.p>
               <motion.h1 variants={item} className="font-editorial t-hero mt-5 font-normal leading-[1.08]">
-                Every response
+                {t("authHeadlineLine1")}
                 <br />
-                tells <span className="italic" style={{ color: "#5E43F3" }}>a story.</span>
+                {t("authHeadlineLine2")}{" "}
+                <span className="italic" style={{ color: "#5E43F3" }}>{t("authHeadlineAccent")}</span>
               </motion.h1>
               <motion.p variants={item} className="mt-5 max-w-[26rem] t-body text-foreground/65">
-                A secure, intelligent platform to create, publish and analyse family
-                assessment surveys. Your data stays private. Your insights create impact.
+                {t("authLede")}
               </motion.p>
             </motion.div>
 
-            {/* min-h-0 lets this shrink and clip on a short viewport instead of
-                forcing the panel taller than the locked screen height. */}
+            {/*
+              The sculpture is a FIXED 560x600 box. Scaling it with a transform
+              alone shrank what you see but left the 600px layout box behind, so
+              the flex column still reserved 600px, overflowed the locked panel
+              height and clipped the lower cards off the bottom of the screen.
+
+              So the wrapper carries the scaled dimensions and the transform runs
+              from the top-left corner: layout box and visual box are the same
+              rectangle again, which is what lets `items-center` actually centre
+              it. The scale is one custom property so both stay in step at every
+              breakpoint — change it in one place, never two.
+            */}
             <motion.div
               initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1.1, ease: EASE, delay: 0.2 }}
-              className="grid min-h-0 w-full flex-1 origin-center place-items-center scale-[0.58] xl:scale-[0.72] 2xl:scale-[0.85]"
+              className="shrink-0 [--illo:0.46] xl:[--illo:0.58] 2xl:[--illo:0.68]"
+              style={{
+                width: "calc(560px * var(--illo))",
+                height: "calc(600px * var(--illo))",
+              }}
             >
-              <AuthIllustration />
+              <div style={{ transform: "scale(var(--illo))", transformOrigin: "top left" }}>
+                <AuthIllustration />
+              </div>
             </motion.div>
           </div>
 
@@ -186,12 +206,12 @@ export default function Auth() {
             className="relative z-10 hidden shrink-0 items-center gap-2 t-caption text-muted-foreground lg:flex"
           >
             <span className="inline-flex h-1.5 w-1.5 rounded-pill" style={{ background: "rgba(94,67,243,0.6)" }} />
-            Private
+            {t("authTrustPrivate")}
             <span className="text-border-strong">·</span>
-            Secure
+            {t("authTrustSecure")}
             <span className="text-border-strong">·</span>
-            Trusted
-            <span className="ml-1 text-tertiary">— authorized access only</span>
+            {t("authTrustTrusted")}
+            <span className="ml-1 text-tertiary">{t("authTrustSuffix")}</span>
           </motion.div>
         </aside>
 
@@ -228,8 +248,8 @@ export default function Auth() {
             <div className="relative rounded-[28px] border border-[rgba(94,67,243,0.07)] bg-[rgba(255,255,255,0.94)] p-6 backdrop-blur-[30px] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_50px_140px_rgba(95,70,255,0.10),0_2px_10px_rgba(46,42,69,0.04)] sm:rounded-[32px] sm:p-8 lg:rounded-[36px] lg:p-12">
               <div className="flex flex-col items-center text-center">
                 <Logo size={52} radius={16} />
-                <h2 className="t-title mt-6 font-semibold tracking-tight">Welcome back</h2>
-                <p className="mt-2 t-caption text-muted-foreground">Sign in to continue to your secure workspace</p>
+                <h2 className="t-title mt-6 font-semibold tracking-tight">{t("authWelcomeBack")}</h2>
+                <p className="mt-2 t-caption text-muted-foreground">{t("authSignInSubtitle")}</p>
               </div>
 
               {error && (
@@ -245,7 +265,7 @@ export default function Auth() {
               <form onSubmit={signIn} className="mt-6 space-y-5 sm:space-y-6" noValidate>
                 <div className="space-y-3">
                   <Label htmlFor="si-email" className="t-caption font-medium text-foreground/70">
-                    Email address
+                    {t("authEmailLabel")}
                   </Label>
                   <div className="group relative">
                     <Mail
@@ -258,7 +278,7 @@ export default function Auth() {
                       type="email"
                       inputMode="email"
                       autoComplete="email"
-                      placeholder="admin@example.com"
+                      placeholder={t("authEmailPlaceholder")}
                       required
                       aria-invalid={!!error}
                       className="h-[60px] rounded-[18px] border-[rgba(80,80,120,0.10)] bg-white pl-12 hover:border-[rgba(80,80,120,0.18)] focus-visible:border-[#6E5BFF] focus-visible:bg-white focus-visible:ring-[6px] focus-visible:ring-[rgba(110,91,255,0.10)]"
@@ -268,7 +288,7 @@ export default function Auth() {
 
                 <div className="space-y-3">
                   <Label htmlFor="si-password" className="t-caption font-medium text-foreground/70">
-                    Password
+                    {t("authPasswordLabel")}
                   </Label>
                   <div className="group relative">
                     <Lock
@@ -280,7 +300,7 @@ export default function Auth() {
                       name="password"
                       type={showPw ? "text" : "password"}
                       autoComplete="current-password"
-                      placeholder="Enter your password"
+                      placeholder={t("authPasswordPlaceholder")}
                       required
                       aria-invalid={!!error}
                       className="h-[60px] rounded-[18px] border-[rgba(80,80,120,0.10)] bg-white pl-12 pr-12 hover:border-[rgba(80,80,120,0.18)] focus-visible:border-[#6E5BFF] focus-visible:bg-white focus-visible:ring-[6px] focus-visible:ring-[rgba(110,91,255,0.10)]"
@@ -288,7 +308,7 @@ export default function Auth() {
                     <button
                       type="button"
                       onClick={() => setShowPw((v) => !v)}
-                      aria-label={showPw ? "Hide password" : "Show password"}
+                      aria-label={showPw ? t("authHidePassword") : t("authShowPassword")}
                       aria-pressed={showPw}
                       className="touch-halo absolute right-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-pill text-tertiary transition-colors hover:bg-[rgba(94,67,243,0.06)] hover:text-[#6E5BFF] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[rgba(110,91,255,0.20)]"
                     >
@@ -307,7 +327,7 @@ export default function Auth() {
                     <Loader2 className="h-[18px] w-[18px] animate-spin" />
                   ) : (
                     <>
-                      Continue
+                      {t("continue")}
                       <ArrowRight className="h-[18px] w-[18px] transition-transform duration-base ease-out group-hover:translate-x-0.5" />
                     </>
                   )}
@@ -317,7 +337,7 @@ export default function Auth() {
 
             <p className="mt-6 flex items-center justify-center gap-2 t-caption text-muted-foreground">
               <Lock className="h-3.5 w-3.5 opacity-70" />
-              Private workspace for authorized administrators
+              {t("authFooterNote")}
             </p>
           </motion.div>
         </main>
