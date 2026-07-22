@@ -1,5 +1,6 @@
 import { customAlphabet } from "nanoid";
 import { supabase } from "@/integrations/supabase/client";
+import { familyDb } from "@/lib/familyDb";
 import { logAudit } from "@/lib/audit";
 import type { FamilyCaseStatus } from "@/lib/familyAccess";
 
@@ -14,7 +15,6 @@ import type { FamilyCaseStatus } from "@/lib/familyAccess";
 
 export type { FamilyCaseStatus };
 
-const familySupabase = supabase as any;
 
 export interface FamilyCase {
   id: string;
@@ -151,11 +151,11 @@ export function familyLinkUrl(accessToken: string): string {
  * as Expired rather than as a stale "In progress" an officer might chase.
  */
 export async function listFamilyCases(): Promise<FamilyCaseRow[]> {
-  await familySupabase.rpc("expire_stale_family_cases");
+  await familyDb.rpc("expire_stale_family_cases");
 
   const [{ data: cases, error }, { data: surveys }] = await Promise.all([
-    familySupabase.from("family_cases").select("*").order("created_at", { ascending: false }),
-    familySupabase.from("surveys").select("id, title_en, title_te"),
+    familyDb.from("family_cases").select("*").order("created_at", { ascending: false }),
+    familyDb.from("surveys").select("id, title_en, title_te"),
   ]);
   if (error) throw error;
 
@@ -166,7 +166,7 @@ export async function listFamilyCases(): Promise<FamilyCaseRow[]> {
   const responseIds = rows.map((c) => c.response_id).filter((id): id is string => !!id);
   const responses = new Map<string, { completion_pct: number | null; submitted_at: string }>();
   if (responseIds.length) {
-    const { data } = await familySupabase
+    const { data } = await familyDb
       .from("survey_responses")
       .select("id, completion_pct, submitted_at")
       .in("id", responseIds);
@@ -189,7 +189,7 @@ export async function listFamilyCases(): Promise<FamilyCaseRow[]> {
 }
 
 export async function getFamilyCaseEvents(caseId: string): Promise<FamilyCaseEvent[]> {
-  const { data, error } = await familySupabase
+  const { data, error } = await familyDb
     .from("family_case_events")
     .select("*")
     .eq("case_id", caseId)
@@ -210,7 +210,7 @@ export interface FamilyCaseStats {
 }
 
 export async function getFamilyCaseStats(): Promise<FamilyCaseStats> {
-  const { data, error } = await familySupabase.rpc("family_case_stats");
+  const { data, error } = await familyDb.rpc("family_case_stats");
   if (error) throw error;
   const row = (data?.[0] ?? {}) as Record<string, number | null>;
   return {
@@ -244,7 +244,7 @@ export async function createFamilyCase(input: FamilyCaseInput): Promise<FamilyCa
   const expiresAt = new Date(Date.now() + (input.valid_days ?? 90) * 86_400_000).toISOString();
 
   for (let attempt = 0; attempt < 6; attempt++) {
-    const { data, error } = await familySupabase
+    const { data, error } = await familyDb
       .from("family_cases")
       .insert({
         deceased_name: input.deceased_name.trim(),
@@ -302,7 +302,7 @@ export async function updateFamilyCase(
 ): Promise<void> {
   const next = { ...patch };
   if (next.phone) next.phone = normalisePhone(next.phone);
-  const { error } = await familySupabase.from("family_cases").update(next).eq("id", id);
+  const { error } = await familyDb.from("family_cases").update(next).eq("id", id);
   if (error) throw error;
   await recordEvent(id, "updated", { fields: Object.keys(patch) });
   await logAudit("family_case.update", "family_case", id, { fields: Object.keys(patch) });
@@ -313,7 +313,7 @@ export async function updateFamilyCase(
 export async function regeneratePin(id: string): Promise<string> {
   for (let attempt = 0; attempt < 6; attempt++) {
     const pin = generatePin();
-    const { error } = await familySupabase
+    const { error } = await familyDb
       .from("family_cases")
       .update({ pin, pin_issued_at: new Date().toISOString(), failed_attempts: 0, locked_until: null })
       .eq("id", id);
@@ -335,7 +335,7 @@ export async function regeneratePin(id: string): Promise<string> {
 export async function regenerateLink(id: string): Promise<string> {
   for (let attempt = 0; attempt < 6; attempt++) {
     const token = genToken();
-    const { error } = await familySupabase.from("family_cases").update({ access_token: token }).eq("id", id);
+    const { error } = await familyDb.from("family_cases").update({ access_token: token }).eq("id", id);
     if (!error) {
       await recordEvent(id, "link_regenerated", {});
       await logAudit("family_case.link_regenerate", "family_case", id, {});
@@ -349,7 +349,7 @@ export async function regenerateLink(id: string): Promise<string> {
 /** Push the expiry out without touching the credentials the family already holds. */
 export async function extendFamilyCase(id: string, days = 30): Promise<string> {
   const expiresAt = new Date(Date.now() + days * 86_400_000).toISOString();
-  const { data, error } = await familySupabase
+  const { data, error } = await familyDb
     .from("family_cases")
     .update({ expires_at: expiresAt, status: "opened" })
     .eq("id", id)
@@ -369,7 +369,7 @@ export async function extendFamilyCase(id: string, days = 30): Promise<string> {
  * rewrite the first. The case simply becomes answerable again.
  */
 export async function reopenFamilyCase(id: string, days = 30): Promise<void> {
-  const { error } = await familySupabase
+  const { error } = await familyDb
     .from("family_cases")
     .update({
       status: "reopened",
@@ -386,7 +386,7 @@ export async function reopenFamilyCase(id: string, days = 30): Promise<void> {
 }
 
 export async function deleteFamilyCase(id: string): Promise<void> {
-  const { error } = await familySupabase.from("family_cases").delete().eq("id", id);
+  const { error } = await familyDb.from("family_cases").delete().eq("id", id);
   if (error) throw error;
   await logAudit("family_case.delete", "family_case", id, {});
 }
@@ -400,7 +400,7 @@ export async function recordPinViewed(id: string, referenceId: string): Promise<
 
 async function recordEvent(caseId: string, event: string, detail: Record<string, unknown>) {
   const { data: auth } = await supabase.auth.getUser();
-  await familySupabase.from("family_case_events").insert({
+  await familyDb.from("family_case_events").insert({
     case_id: caseId,
     event,
     detail: detail as never,

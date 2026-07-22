@@ -77,7 +77,10 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/app/responses", labelKey: "navResponses", icon: Inbox },
       { to: "/app/analytics", labelKey: "navAnalytics", icon: BarChart3 },
       { to: "/app/reports", labelKey: "navReports", icon: FileText },
-      { to: "/app/export", labelKey: "navExport", icon: Download },
+      /* Export Center is hidden. Exporting now happens on Responses, against the
+         filters already applied there — a separate destination meant re-picking
+         the same survey and date range and then wondering why the two files
+         disagreed. The route and page remain for bookmarks. */
     ],
   },
   {

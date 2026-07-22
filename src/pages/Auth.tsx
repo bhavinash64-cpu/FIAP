@@ -98,13 +98,14 @@ export default function Auth() {
         <LangToggle />
       </div>
 
-      {/* Column split: the editorial panel still leads, but only just. The card
-          column carries a 520px floor AND a fixed 45% of the free space, so it is
-          never the column that gets squeezed: it holds that 45% identically at
-          1280, 1440, 1600 and 1920 instead of collapsing toward a narrow rail
-          while the illustration keeps growing. Below 1156px the 520px floor takes
-          over and the editorial panel — the decorative half — gives way instead. */}
-      <div className="relative z-10 grid min-h-dvh grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(520px,0.9fr)]">
+      {/* Column split: three parts visual to one part form.
+          The 440px floor on the form column is what keeps that ratio honest —
+          a literal 1fr would hand the card 360px at 1440px wide, and once the
+          horizontal padding comes off, a 296px form is narrower than the phone
+          layout it is supposed to be a step up from. So the ratio holds exactly
+          at 1760px and above, and below that the decorative column — the half
+          with nothing to do — is the one that gives way. */}
+      <div className="relative z-10 grid min-h-dvh grid-cols-1 lg:grid-cols-[minmax(0,3fr)_minmax(440px,1fr)]">
         {/* ══ LEFT · editorial panel + floating sculpture — desktop only ══ */}
         <aside className="relative hidden overflow-hidden bg-[#FAFAFD] lg:flex lg:h-dvh lg:flex-col lg:border-r lg:border-[rgba(94,67,243,0.08)] lg:p-12 xl:p-16">
           {/* Ambient purple wash — the warm light the whole panel sits in */}
@@ -117,47 +118,61 @@ export default function Auth() {
             }}
           />
 
-          {/* Brand + editorial headline (top) */}
-          <div className="relative z-10 p-5 sm:p-6 lg:p-0">
-            <motion.div
-              initial={reduce ? { opacity: 0 } : { opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, ease: EASE }}
-              className="flex items-center gap-3"
-            >
-              <Logo size={44} radius={14} />
-              <div className="min-w-0 leading-tight">
-                <span className="block truncate t-body font-semibold tracking-tight">Jeevana Insight</span>
-                <span className="block truncate t-caption text-muted-foreground">Family Assessment Platform</span>
-              </div>
-            </motion.div>
+          {/* Brand lockup — pinned to the top corner, out of the composition. */}
+          <motion.div
+            initial={reduce ? { opacity: 0 } : { opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: EASE }}
+            className="relative z-10 flex shrink-0 items-center gap-3"
+          >
+            <Logo size={44} radius={14} />
+            <div className="min-w-0 leading-tight">
+              <span className="block truncate t-body font-semibold tracking-tight">Jeevana Insight</span>
+              <span className="block truncate t-caption text-muted-foreground">Family Assessment Platform</span>
+            </div>
+          </motion.div>
 
-            <motion.div initial="hidden" animate="show" variants={container} className="mt-12 hidden max-w-[30rem] lg:block">
+          {/*
+            Headline and sculpture are ONE optically-centred group, not two
+            separately-placed things.
+
+            Before, the headline was glued under the brand lockup at the top and
+            the sculpture took the leftover height below it — so the sculpture
+            centred itself in whatever space happened to remain and read as
+            bottom-heavy, while the top-left corner carried all the text. Making
+            the pair a single centred stack in the free space between the lockup
+            and the trust line is what actually balances the panel, and it stays
+            balanced as the viewport height changes because both halves move
+            together.
+          */}
+          <div className="relative z-0 flex min-h-0 flex-1 flex-col items-center justify-center gap-8 overflow-hidden py-8">
+            <motion.div
+              initial="hidden"
+              animate="show"
+              variants={container}
+              className="w-full max-w-[30rem] shrink-0"
+            >
               <motion.p variants={item} className="eyebrow" style={{ color: "#5E43F3" }}>
                 Private workspace
               </motion.p>
-              <motion.h1 variants={item} className="font-editorial t-hero mt-6 font-normal leading-[1.08]">
+              <motion.h1 variants={item} className="font-editorial t-hero mt-5 font-normal leading-[1.08]">
                 Every response
                 <br />
                 tells <span className="italic" style={{ color: "#5E43F3" }}>a story.</span>
               </motion.h1>
-              <motion.p variants={item} className="mt-6 max-w-[26rem] t-body text-foreground/65">
+              <motion.p variants={item} className="mt-5 max-w-[26rem] t-body text-foreground/65">
                 A secure, intelligent platform to create, publish and analyse family
                 assessment surveys. Your data stays private. Your insights create impact.
               </motion.p>
             </motion.div>
-          </div>
 
-          {/* The handcrafted floating sculpture — desktop only, centred in the
-              remaining space. Scaled to fit narrower desktops without cropping. */}
-          {/* min-h-0 + overflow-hidden lets this decorative area shrink and clip
-              instead of forcing the grid row taller than the locked viewport. */}
-          <div className="relative z-0 hidden min-h-0 flex-1 place-items-center overflow-hidden lg:grid">
+            {/* min-h-0 lets this shrink and clip on a short viewport instead of
+                forcing the panel taller than the locked screen height. */}
             <motion.div
               initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1.1, ease: EASE, delay: 0.2 }}
-              className="origin-center scale-[0.62] xl:scale-[0.8] 2xl:scale-[0.92]"
+              className="grid min-h-0 w-full flex-1 origin-center place-items-center scale-[0.58] xl:scale-[0.72] 2xl:scale-[0.85]"
             >
               <AuthIllustration />
             </motion.div>
@@ -168,7 +183,7 @@ export default function Auth() {
             initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: EASE, delay: 0.5 }}
-            className="relative z-10 hidden items-center gap-2 t-caption text-muted-foreground lg:flex"
+            className="relative z-10 hidden shrink-0 items-center gap-2 t-caption text-muted-foreground lg:flex"
           >
             <span className="inline-flex h-1.5 w-1.5 rounded-pill" style={{ background: "rgba(94,67,243,0.6)" }} />
             Private
@@ -187,12 +202,17 @@ export default function Auth() {
             with it even when a short viewport pushes the card up against the top,
             and the matching bottom band keeps the card optically centred. From lg
             the lockup is hidden, so the column can breathe closer to the edges. */}
-        <main className="relative flex min-h-dvh w-full min-w-0 flex-col items-center justify-center px-4 py-16 sm:px-6 sm:py-24 lg:px-10 lg:py-12 xl:px-14">
+        {/* Horizontal padding is tighter from lg than it looks like it should be:
+            the form column is now the narrow one, so every rem of gutter comes
+            straight off the input width. px-8 keeps ~376px of usable card at
+            1440px, which is wider than the phone layout — the thing the desktop
+            form must never lose to. */}
+        <main className="relative flex min-h-dvh w-full min-w-0 flex-col items-center justify-center px-4 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-12 xl:px-10">
           <motion.div
             initial={reduce ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.99 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.7, ease: EASE, delay: 0.1 }}
-            className="w-full max-w-[472px]"
+            className="w-full max-w-[420px]"
           >
             {/* Compact brand — mobile/tablet only, since the banner is gone there. */}
             <div className="mb-4 flex items-center justify-center gap-2.5 sm:mb-6 lg:hidden">
