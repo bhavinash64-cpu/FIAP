@@ -1,4 +1,9 @@
-project_id = "wfuxtealkrudukvpmtrg"
+# Must match the project VITE_SUPABASE_URL points at. It did not: this file
+# named `wfuxtealkrudukvpmtrg` while the app has always talked to
+# `atlekmwlqweqxrfbvwie`. Every `supabase link` / `db push` / `functions deploy`
+# run from this repo was therefore aimed at the wrong project, which is why the
+# migrations are live but not one edge function is deployed.
+project_id = "atlekmwlqweqxrfbvwie"
 
 [auth]
 enable_signup = false

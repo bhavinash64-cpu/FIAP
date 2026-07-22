@@ -24,7 +24,7 @@ import { pushExportHistory } from "@/lib/exportHistory";
 import { getResponsesForExport } from "@/lib/analytics";
 import { listResponses } from "@/lib/responseExplorer";
 import { getSurveyWithQuestions } from "@/lib/surveys";
-import { familyDb } from "@/lib/familyDb";
+import { supabase } from "@/integrations/supabase/client";
 import { formatDuration } from "@/lib/reports";
 import { cn } from "@/lib/utils";
 
@@ -99,7 +99,7 @@ export function ResponseExportDialog({
     staleTime: 5 * 60_000,
     retry: false,
     queryFn: async () => {
-      const { error } = await familyDb.from("family_cases").select("id").limit(1);
+      const { error } = await supabase.from("family_cases").select("id").limit(1);
       return { available: !error };
     },
   });
