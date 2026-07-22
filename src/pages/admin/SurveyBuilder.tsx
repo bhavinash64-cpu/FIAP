@@ -21,6 +21,16 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/survey/StatusBadge";
 import { SurveyShareCard } from "@/components/share/SurveyShareCard";
 import { QuestionTypeIcon } from "@/components/survey/QuestionTypeIcon";
@@ -33,7 +43,7 @@ import { AutoTextarea } from "@/components/survey/builder/AutoTextarea";
 import { BuilderFilters } from "@/components/survey/builder/BuilderFilters";
 import { QuestionList } from "@/components/survey/builder/QuestionList";
 import { InlinePreview } from "@/components/survey/builder/InlinePreview";
-import { useBuilderStore, selectVisibleIds, flushAutosave } from "@/stores/builderStore";
+import { useBuilderStore, selectVisibleIds, flushAutosave, hasPendingWrites } from "@/stores/builderStore";
 import { QUESTION_KINDS, closeSurvey, publishSurvey, reopenSurvey } from "@/lib/surveys";
 import { useLangMode } from "@/lib/i18n";
 import { toast } from "sonner";
@@ -116,6 +126,8 @@ export default function SurveyBuilder() {
   const ingest = useBuilderStore((s) => s.ingest);
   const setSurveyStatus = useBuilderStore((s) => s.setSurveyStatus);
 
+  const saveState = useBuilderStore((s) => s.saveState);
+
   const showOrigin = useOriginVisibility((s) => s.visible);
   const toggleOrigin = useOriginVisibility((s) => s.toggle);
 
@@ -124,6 +136,8 @@ export default function SurveyBuilder() {
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [leaveOpen, setLeaveOpen] = useState(false);
 
   useEffect(() => {
     if (id) load(id);
@@ -156,6 +170,63 @@ export default function SurveyBuilder() {
     }
   }, [survey, total, setSurveyStatus, qc]);
 
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    try {
+      await flushAutosave();
+      toast.success("All changes saved");
+    } catch {
+      toast.error("Could not save. Check your connection — your edits are still on screen.");
+    } finally {
+      setSaving(false);
+    }
+  }, []);
+
+  /**
+   * Leaving with writes still in the air.
+   *
+   * The unmount effect already flushes, but that is a promise nobody is waiting
+   * on — a route change tears the component down and the request can be
+   * abandoned mid-flight, or fail with no one left to see the toast. So if
+   * anything is pending or the last save errored, ask first. When everything is
+   * settled this is a plain back button with no dialog, because a confirmation
+   * that fires when there is nothing to confirm is the fastest way to teach
+   * someone to dismiss confirmations without reading them.
+   */
+  const handleBack = useCallback(() => {
+    if (hasPendingWrites() || saveState === "error") setLeaveOpen(true);
+    else nav("/app/surveys");
+  }, [nav, saveState]);
+
+  const leaveAnyway = useCallback(() => {
+    setLeaveOpen(false);
+    nav("/app/surveys");
+  }, [nav]);
+
+  const saveThenLeave = useCallback(async () => {
+    setSaving(true);
+    try {
+      await flushAutosave();
+      setLeaveOpen(false);
+      nav("/app/surveys");
+    } catch {
+      toast.error("Still could not save. Your edits are on screen — try again.");
+    } finally {
+      setSaving(false);
+    }
+  }, [nav]);
+
+  // Closing the tab is the one exit React Router cannot intercept.
+  useEffect(() => {
+    function warn(e: BeforeUnloadEvent) {
+      if (!hasPendingWrites() && saveState !== "error") return;
+      e.preventDefault();
+      e.returnValue = "";
+    }
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [saveState]);
+
   const handleClose = useCallback(async () => {
     if (!survey) return;
     await closeSurvey(survey.id);
@@ -182,20 +253,40 @@ export default function SurveyBuilder() {
   }
 
   return (
-    <div className="min-h-dvh bg-canvas">
-      {/* Toolbar */}
-      <div className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-2 px-4 py-2.5 sm:px-6">
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/app/surveys">
-              <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
-              Surveys
-            </Link>
+    <div className="bg-canvas">
+      {/*
+        Docked UNDER the app topbar, not at top:0.
+
+        Both bars were `sticky top-0`, so the builder's toolbar rendered as a
+        second full-width bar sitting on top of the shell's — two stacked pieces
+        of chrome with two different backgrounds, competing for the same job.
+        Pinning this one at the topbar's height and giving it the SAME material
+        (canvas + blur, one divider at the bottom) makes the pair read as a
+        single header block, while Save and Publish stay reachable without
+        scrolling back up.
+      */}
+      <div className="sticky top-[var(--topbar-h)] z-20 border-b border-border bg-canvas/85 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-2 px-4 py-2 sm:px-6">
+          <Button variant="ghost" size="sm" onClick={handleBack}>
+            <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
+            Surveys
           </Button>
           <StatusBadge status={survey.status} />
           <SaveIndicator />
 
           <div className="ml-auto flex items-center gap-2">
+            {/*
+              Edits already autosave 400ms after you stop typing, so this button
+              is not what makes them persist. It exists because "did that
+              actually save?" is the question people ask before closing a laptop,
+              and a status word alone does not answer it — pressing something and
+              watching it settle to Saved does. It flushes every pending write
+              immediately rather than waiting out the debounce.
+            */}
+            <Button size="sm" variant="outline" onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" strokeWidth={1.8} />}
+              Save
+            </Button>
             <Button
               size="sm"
               variant={previewOpen ? "secondary" : "outline"}
@@ -305,7 +396,7 @@ export default function SurveyBuilder() {
           {/* Live preview */}
           {previewOpen && (
             <aside className="hidden lg:block">
-              <div className="sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-surface border border-border/70 bg-muted/30 p-4">
+              <div className="sticky top-[calc(var(--topbar-h)+3.5rem)] max-h-[calc(100dvh-var(--topbar-h)-5rem)] overflow-y-auto rounded-surface border border-border/70 bg-muted/30 p-4">
                 <div className="mb-3 flex items-center gap-2">
                   <span className="eyebrow text-primary">Live preview</span>
                   <span className="t-caption text-muted-foreground">as parents see it</span>
@@ -326,6 +417,31 @@ export default function SurveyBuilder() {
       />
       <VoiceDialog open={voiceOpen} onOpenChange={setVoiceOpen} surveyId={survey.id} onCreated={(q) => ingest([q])} />
       <QuestionLibraryDialog open={libraryOpen} onOpenChange={setLibraryOpen} surveyId={survey.id} onImported={ingest} />
+
+      <AlertDialog open={leaveOpen} onOpenChange={setLeaveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave without saving?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {saveState === "error"
+                ? "The last change could not be saved. If you leave now it will be lost."
+                : "Some changes are still being saved. If you leave now they may be lost."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Stay on this page</AlertDialogCancel>
+            {/* Save-and-leave is the primary action, not "leave anyway".
+                Discarding work should never be the easiest button to hit. */}
+            <Button variant="ghost" onClick={leaveAnyway} disabled={saving}>
+              Leave anyway
+            </Button>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); void saveThenLeave(); }} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Save and leave
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

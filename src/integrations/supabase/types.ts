@@ -392,7 +392,7 @@ export type Database = {
           officer_name: string | null
           opened_at: string | null
           phone: string
-          pin: string
+          pin: string | null
           pin_issued_at: string
           preferred_language: string
           reference_id: string
@@ -422,7 +422,7 @@ export type Database = {
           officer_name?: string | null
           opened_at?: string | null
           phone: string
-          pin: string
+          pin?: string | null
           pin_issued_at?: string
           preferred_language?: string
           reference_id?: string
@@ -452,7 +452,7 @@ export type Database = {
           officer_name?: string | null
           opened_at?: string | null
           phone?: string
-          pin?: string
+          pin?: string | null
           pin_issued_at?: string
           preferred_language?: string
           reference_id?: string

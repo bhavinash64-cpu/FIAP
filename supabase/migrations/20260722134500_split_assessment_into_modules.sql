@@ -212,8 +212,11 @@ BEGIN
         JOIN public.question_bank_instruments qi ON qi.id = it.instrument_id
         WHERE qi.code = sec->>'code'
           AND qi.is_builtin
+          -- IS DISTINCT FROM, not <>: a section with no "items" key yields
+          -- jsonb_typeof(NULL) = NULL, and NULL <> 'array' is NULL, which
+          -- would silently select nothing for every whole-instrument module.
           AND (
-            jsonb_typeof(sec->'items') <> 'array'
+            jsonb_typeof(sec->'items') IS DISTINCT FROM 'array'
             OR it.order_index IN (
               SELECT t.value::int FROM jsonb_array_elements_text(sec->'items') AS t(value)
             )

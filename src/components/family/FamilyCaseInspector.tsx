@@ -50,11 +50,8 @@ import {
   extendFamilyCase,
   familyLinkUrl,
   formatPhone,
-  formatPin,
   getFamilyCaseEvents,
-  recordPinViewed,
   regenerateLink,
-  regeneratePin,
   reopenFamilyCase,
   type FamilyCaseRow,
 } from "@/lib/familyCases";
@@ -153,11 +150,11 @@ export function FamilyCaseInspector(props: {
   // the row rather than mirrored into state. Stepping to the next family with
   // j/k reuses this component, and a mirrored copy would paint one family's PIN
   // and QR under another family's name until an effect caught up a frame later.
-  const [minted, setMinted] = useState<{ caseId: string; pin?: string; token?: string } | null>(null);
+  const [minted, setMinted] = useState<{ caseId: string; token?: string } | null>(null);
   const [revealedFor, setRevealedFor] = useState<string | null>(null);
-  const [copied, setCopied] = useState<"link" | "pin" | null>(null);
+  const [copied, setCopied] = useState<"link" | "phone" | null>(null);
   const [busy, setBusy] = useState(false);
-  const [confirm, setConfirm] = useState<"pin" | "link" | "reopen" | "delete" | null>(null);
+  const [confirm, setConfirm] = useState<"link" | "reopen" | "delete" | null>(null);
 
   useEffect(() => setCopied(null), [caseId]);
 
@@ -172,7 +169,7 @@ export function FamilyCaseInspector(props: {
   }, [qc, caseId]);
 
   const copy = useCallback(
-    async (text: string, which: "link" | "pin", message: string) => {
+    async (text: string, which: "link" | "phone", message: string) => {
       try {
         await navigator.clipboard.writeText(text);
         setCopied(which);
@@ -184,24 +181,6 @@ export function FamilyCaseInspector(props: {
     },
     [t],
   );
-
-  /**
-   * A readable credential is only defensible if looking at it is auditable —
-   * so the reveal writes a `pin_viewed` event before anything is shown, and
-   * that event is what makes storing the PIN in plain form acceptable at all.
-   * A failed audit write must not hide the PIN from an officer standing in
-   * front of a family, so it is logged and swallowed rather than blocking.
-   */
-  async function revealPin() {
-    if (!caseRow || revealedFor === caseRow.id) return;
-    setRevealedFor(caseRow.id);
-    try {
-      await recordPinViewed(caseRow.id, caseRow.reference_id);
-      refreshTimeline();
-    } catch {
-      toast.error("The PIN was shown but could not be recorded in the audit log.");
-    }
-  }
 
   async function run(action: () => Promise<void>, success: string) {
     if (busy) return;
@@ -222,9 +201,7 @@ export function FamilyCaseInspector(props: {
   if (!caseRow) return null;
 
   const fresh = minted?.caseId === caseRow.id ? minted : null;
-  const pin = fresh?.pin ?? caseRow.pin;
   const token = fresh?.token ?? caseRow.access_token;
-  const pinRevealed = revealedFor === caseRow.id;
 
   const url = familyLinkUrl(token);
   const surveyTitle = renderBilingual(mode, caseRow.survey_title_en, caseRow.survey_title_te).primary;
@@ -329,33 +306,21 @@ export function FamilyCaseInspector(props: {
 
               <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-4">
                 <div>
-                  <div className="eyebrow">{t("caseTempPin")}</div>
-                  {pinRevealed ? (
-                    <div className="mt-1 flex items-center gap-2">
-                      <span className="t-title font-mono tabular-nums tracking-[0.22em]">{formatPin(pin)}</span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        aria-label="Copy PIN"
-                        onClick={() => void copy(pin, "pin", t("copied"))}
-                      >
-                        {copied === "pin" ? <Check strokeWidth={1.8} /> : <Copy strokeWidth={1.8} />}
-                      </Button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => void revealPin()}
-                      className="mt-1 flex items-center gap-3 rounded-control px-1 py-0.5 text-left transition-colors duration-fast hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  <div className="eyebrow">{t("casePhone")}</div>
+                  {/* The number the family types after opening their link. Not a
+                      secret — it is on the case file — so there is nothing to
+                      reveal and nothing to audit. The link is the credential. */}
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className="t-title font-mono tabular-nums tracking-[0.14em]">{formatPhone(caseRow.phone)}</span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label="Copy phone number"
+                      onClick={() => void copy(caseRow.phone, "phone", t("copied"))}
                     >
-                      <span aria-hidden className="t-title font-mono tracking-[0.22em] text-tertiary">
-                        ••• •••
-                      </span>
-                      <span className="inline-flex items-center gap-1.5 t-caption font-semibold text-primary">
-                        <Eye className="h-4 w-4" strokeWidth={1.8} /> Show PIN
-                      </span>
-                    </button>
-                  )}
+                      {copied === "phone" ? <Check strokeWidth={1.8} /> : <Copy strokeWidth={1.8} />}
+                    </Button>
+                  </div>
                 </div>
 
                 <div>
@@ -402,9 +367,6 @@ export function FamilyCaseInspector(props: {
                     </a>
                   </Button>
 
-                  <Button size="sm" variant="outline" disabled={busy} onClick={() => setConfirm("pin")}>
-                    <RefreshCw strokeWidth={1.7} /> {t("caseRegeneratePin")}
-                  </Button>
 
                   <Button
                     size="sm"
@@ -520,27 +482,7 @@ export function FamilyCaseInspector(props: {
 
       {/* The paper the family keeps. Portalled to <body>, so "Print slip" and a
           plain Ctrl+P both print the slip rather than the console. */}
-      <CaseSlipSheet caseRow={{ ...caseRow, pin, access_token: token }} />
-
-      <ConfirmDialog
-        open={confirm === "pin"}
-        onOpenChange={(o) => !o && setConfirm(null)}
-        title={t("caseRegeneratePin")}
-        description="The PIN on the family's printed slip will stop working immediately. Print or read out the new PIN before you leave."
-        confirmLabel={t("caseRegeneratePin")}
-        icon={RefreshCw}
-        busy={busy}
-        cancelLabel={t("cancel")}
-        onConfirm={() =>
-          void run(async () => {
-            const next = await regeneratePin(caseRow.id);
-            setMinted((m) => ({ ...(m && m.caseId === caseRow.id ? m : {}), caseId: caseRow.id, pin: next }));
-            // Regenerating is itself an audited act, so the new PIN can be shown
-            // without a second reveal — the officer asked for a number to read out.
-            setRevealedFor(caseRow.id);
-          }, "New PIN generated")
-        }
-      />
+      <CaseSlipSheet caseRow={{ ...caseRow, access_token: token }} />
 
       <ConfirmDialog
         open={confirm === "link"}

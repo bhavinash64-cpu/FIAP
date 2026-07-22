@@ -37,7 +37,7 @@ import {
   caseQrFileName,
   createFamilyCase,
   familyLinkUrl,
-  formatPin,
+  formatPhone,
   isValidPhone,
   type FamilyCase,
   type FamilyCaseRow,
@@ -524,12 +524,12 @@ function CreatedPanel({
 
           <div className="min-w-0 space-y-4">
             <div>
-              <div className="eyebrow">{t("caseTempPin")}</div>
-              <div className="mt-1 font-mono text-4xl font-semibold tabular-nums tracking-[0.18em] text-foreground">
-                {formatPin(created.pin)}
+              <div className="eyebrow">{t("casePhone")}</div>
+              <div className="mt-1 font-mono text-4xl font-semibold tabular-nums tracking-[0.14em] text-foreground">
+                {formatPhone(created.phone)}
               </div>
               <p className="mt-1 t-caption text-muted-foreground">
-                Password at sign in — never the phone number.
+                The family opens the link, then types this number. There is no PIN.
               </p>
             </div>
 

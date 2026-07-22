@@ -2,7 +2,7 @@ import { QRCodeCanvas } from "qrcode.react";
 import { PrintSheet } from "@/components/share/PrintSheet";
 import { Logo } from "@/components/Logo";
 import { translate, useT, type LangMode } from "@/lib/i18n";
-import { familyLinkUrl, formatPhone, formatPin, type FamilyCaseRow } from "@/lib/familyCases";
+import { familyLinkUrl, formatPhone, type FamilyCaseRow } from "@/lib/familyCases";
 
 /*
    The physical artefact an officer leaves behind on the kitchen table.
@@ -82,16 +82,14 @@ export function CaseSlipSheet({ caseRow }: { caseRow: FamilyCaseRow }) {
           </p>
         </div>
 
-        {/* The two things that get read out over a phone line. Letter-spaced and
-            grouped so a caller can keep their place mid-digit. */}
-        <div className="mt-6 grid grid-cols-2 gap-3">
+        {/* One credential now, not two. The PIN is retired — the QR/link is the
+            secret, and this is the number the family types to confirm it is
+            theirs. Letter-spaced and grouped so a caller reading it down a phone
+            line can keep their place mid-digit. */}
+        <div className="mt-6">
           <Credential
             label={`${translate("en", "casePhone")} · ${translate("te", "casePhone")}`}
             value={formatPhone(caseRow.phone)}
-          />
-          <Credential
-            label={`${translate("en", "caseTempPin")} · ${translate("te", "caseTempPin")}`}
-            value={formatPin(caseRow.pin)}
           />
         </div>
 

@@ -29,7 +29,8 @@ export interface FamilyCase {
   survey_id: string;
   status: FamilyCaseStatus;
   access_token: string;
-  pin: string;
+  /** Retired credential. NULL on every case created after 2026-07-22. */
+  pin: string | null;
   pin_issued_at: string;
   locked_until: string | null;
   expires_at: string;
@@ -99,27 +100,6 @@ export const CASE_STATUSES: FamilyCaseStatus[] = [
 
 /** Unambiguous alphabet — no 0/o/1/l — because these get read aloud and retyped. */
 const genToken = customAlphabet("23456789abcdefghjkmnpqrstuvwxyz", 22);
-
-/**
- * A 6-digit PIN from the CSPRNG, with rejection sampling.
- *
- * `crypto.getRandomValues() % 10` would bias digits 0–5, because 256 is not a
- * multiple of 10. On a 6-digit credential that measurably shrinks the search
- * space, so bytes at or above the largest multiple of 10 are discarded instead.
- */
-export function generatePin(): string {
-  const digits: number[] = [];
-  const buf = new Uint8Array(16);
-  while (digits.length < 6) {
-    crypto.getRandomValues(buf);
-    for (const byte of buf) {
-      if (byte >= 250) continue; // 250 = floor(256/10)*10
-      digits.push(byte % 10);
-      if (digits.length === 6) break;
-    }
-  }
-  return digits.join("");
-}
 
 /** Strips +91 / leading 0 / spacing so lookups and uniqueness are on one form. */
 export function normalisePhone(raw: string): string {
@@ -256,7 +236,6 @@ export async function createFamilyCase(input: FamilyCaseInput): Promise<FamilyCa
         notes: input.notes?.trim() || null,
         survey_id: input.survey_id,
         access_token: genToken(),
-        pin: generatePin(),
         expires_at: expiresAt,
         officer_id: auth.user?.id ?? null,
         officer_name: auth.user?.email ?? null,
@@ -305,25 +284,6 @@ export async function updateFamilyCase(
   if (error) throw error;
   await recordEvent(id, "updated", { fields: Object.keys(patch) });
   await logAudit("family_case.update", "family_case", id, { fields: Object.keys(patch) });
-}
-
-/** Invalidates the old PIN immediately. Any live session stays valid — the PIN
- *  is an entry credential, not the session itself. */
-export async function regeneratePin(id: string): Promise<string> {
-  for (let attempt = 0; attempt < 6; attempt++) {
-    const pin = generatePin();
-    const { error } = await supabase
-      .from("family_cases")
-      .update({ pin, pin_issued_at: new Date().toISOString(), failed_attempts: 0, locked_until: null })
-      .eq("id", id);
-    if (!error) {
-      await recordEvent(id, "pin_regenerated", {});
-      await logAudit("family_case.pin_regenerate", "family_case", id, {});
-      return pin;
-    }
-    if (!/duplicate key|unique/i.test(error.message)) throw error;
-  }
-  throw new Error("Could not generate a unique PIN. Please try again.");
 }
 
 /**
@@ -390,13 +350,6 @@ export async function deleteFamilyCase(id: string): Promise<void> {
   await logAudit("family_case.delete", "family_case", id, {});
 }
 
-/** Reading a PIN is itself an auditable act — that is part of what earns it the
- *  right to be stored readable at all. */
-export async function recordPinViewed(id: string, referenceId: string): Promise<void> {
-  await recordEvent(id, "pin_viewed", {});
-  await logAudit("family_case.pin_view", "family_case", id, { reference_id: referenceId });
-}
-
 async function recordEvent(caseId: string, event: string, detail: Record<string, unknown>) {
   const { data: auth } = await supabase.auth.getUser();
   await supabase.from("family_case_events").insert({
@@ -416,10 +369,6 @@ export function formatPhone(phone: string): string {
   return d.length === 10 ? `${d.slice(0, 5)} ${d.slice(5)}` : phone;
 }
 
-/** Grouped 3-3 so it can be read aloud over a phone line without losing place. */
-export function formatPin(pin: string): string {
-  return `${pin.slice(0, 3)} ${pin.slice(3)}`;
-}
 
 export function daysUntil(iso: string): number {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000);

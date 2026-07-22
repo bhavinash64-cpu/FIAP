@@ -1,4 +1,3 @@
-import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import { useI18nStore, useT, type LangMode } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -18,22 +17,32 @@ const options: { value: LangMode; label: string; hint: string }[] = [
  *    than inflating the control itself.
  *  - It must show focus. It is a bare <button> outside the Button cva, so the
  *    house focus ring is applied explicitly.
- *  - The active pill SLIDES between the two options instead of disappearing and
- *    reappearing. Switching language is the one interaction that has to feel
- *    reversible, and a shared-element transition is what says "same control,
- *    other side" rather than "something else happened".
+ *  - It must not move. See the note on the pill below.
  */
 export function LangToggle({ size = "md" }: { size?: "sm" | "md" }) {
   const mode = useI18nStore((s) => s.mode);
   const setMode = useI18nStore((s) => s.setMode);
   const t = useT();
-  const reduce = useReducedMotion();
 
   const h = size === "sm" ? "h-8" : "h-9";
   const px = size === "sm" ? "px-2.5" : "px-3";
 
+  /*
+    No LayoutGroup and no layoutId here — deliberately.
+
+    The pill used to be a framer-motion shared element so it would SLIDE between
+    the two options. Inside one toggle that is a nice touch. Across the app it is
+    a bug: `layoutId` is global, so the instant a second toggle mounts — the
+    landing header and its footer, or the outgoing page's toggle overlapping the
+    incoming one during a route change to Settings or Sign in — framer-motion
+    treats them as the same element and animates the pill flying across the
+    viewport between the two. There is no correct shared-element answer when the
+    "same" element legitimately exists twice, so the animation goes.
+
+    Switching language is instant and unambiguous without it; the colour
+    transition alone carries the change.
+  */
   return (
-    <LayoutGroup id="lang-toggle">
       <div
         role="group"
         aria-label={t("languageGroup")}
@@ -71,21 +80,11 @@ export function LangToggle({ size = "md" }: { size?: "sm" | "md" }) {
                 Keeping the pill and the label in the button's own stacking
                 context makes the toggle independent of whatever it is placed on.
               */}
-              {active &&
-                (reduce ? (
-                  <span className="brand-gradient absolute inset-0 z-0 rounded-pill shadow-sm" />
-                ) : (
-                  <motion.span
-                    layoutId="lang-toggle-pill"
-                    transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                    className="brand-gradient absolute inset-0 z-0 rounded-pill shadow-sm"
-                  />
-                ))}
+              {active && <span className="brand-gradient absolute inset-0 z-0 rounded-pill shadow-sm" />}
               <span className="relative z-10">{o.label}</span>
             </button>
           );
         })}
       </div>
-    </LayoutGroup>
   );
 }

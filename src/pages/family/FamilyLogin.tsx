@@ -87,9 +87,7 @@ export default function FamilyLogin() {
   const [resolving, setResolving] = useState(!!token);
 
   const [phone, setPhone] = useState("");
-  const [pin, setPin] = useState("");
   const [phoneTouched, setPhoneTouched] = useState(false);
-  const [pinTouched, setPinTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<LoginFailure | null>(null);
 
@@ -135,31 +133,26 @@ export default function FamilyLogin() {
 
   const normalised = useMemo(() => normalisePhone(phone), [phone]);
   const phoneValid = INDIAN_MOBILE.test(normalised);
-  const pinValid = /^\d{6}$/.test(pin);
   const phoneError = phoneTouched && !phoneValid;
-  const pinError = pinTouched && !pinValid;
 
   const submit = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       setPhoneTouched(true);
-      setPinTouched(true);
       setFailure(null);
       // Never spend a server attempt — or a lockout slot — on input we can see
       // is malformed from here.
-      if (!phoneValid || !pinValid || submitting) return;
+      if (!phoneValid || !token || submitting) return;
 
       setSubmitting(true);
       try {
-        await familyLogin({ phone: normalised, pin, token });
+        await familyLogin({ phone: normalised, token });
         nav("/family/assessment", { replace: true });
       } catch (err) {
-        setPin("");
-        setPinTouched(false);
         if (err instanceof FamilyAccessError) {
           switch (err.code) {
             case "invalid_credentials":
-              // One message for a wrong phone and a wrong PIN alike. Telling them
+              // One message for a wrong link and a wrong phone alike. Telling them
               // apart would turn this form into a way to test phone numbers until
               // one is accepted — i.e. to enumerate which bereaved families are
               // enrolled in the study.
@@ -184,7 +177,7 @@ export default function FamilyLogin() {
         setSubmitting(false);
       }
     },
-    [nav, normalised, phoneValid, pin, pinValid, submitting, token],
+    [nav, normalised, phoneValid, submitting, token],
   );
 
   if (alreadySignedIn) return <Navigate to="/family/assessment" replace />;
@@ -195,11 +188,18 @@ export default function FamilyLogin() {
   // carries no body because its own sentence already says what to do next, and
   // the help line under the card repeats it.
   const deadEnd: { title: string; body: string | null } | null =
-    link && link.state !== "ok"
-      ? link.state === "expired"
-        ? { title: t("familyErrExpired"), body: null }
-        : { title: t("familyErrNotFound"), body: t("familyErrNotFoundBody") }
-      : null;
+    // No token at all means someone reached /family directly. Since the link IS
+    // the credential now, a form here could never succeed — so it is not shown.
+    // Rendering a phone field that always returns "incorrect" would read as the
+    // family's own mistake, and would also be exactly the enumeration surface
+    // this design removes.
+    !token
+      ? { title: t("familyNeedLinkTitle"), body: t("familyNeedLinkBody") }
+      : link && link.state !== "ok"
+        ? link.state === "expired"
+          ? { title: t("familyErrExpired"), body: null }
+          : { title: t("familyErrNotFound"), body: t("familyErrNotFoundBody") }
+        : null;
 
   return (
     <div className="relative min-h-dvh bg-canvas text-foreground">
@@ -241,7 +241,7 @@ export default function FamilyLogin() {
                   <p className="t-body text-balance leading-relaxed text-muted-foreground">{deadEnd.body}</p>
                 )}
                 {/* A mistyped or stale URL must stay recoverable — the slip still
-                    has a phone number and a PIN on it. */}
+                    has the family’s phone number on it. */}
                 <Button asChild size="xl" shape="pill" className="mt-7 w-full">
                   <Link to="/family">
                     {t("secureAccessAction")}
@@ -334,46 +334,6 @@ export default function FamilyLogin() {
                     </p>
                   </div>
 
-                  <div className="space-y-2.5">
-                    <Label htmlFor="family-pin" className="t-caption font-medium text-foreground/70">
-                      {t("familyPinLabel")}
-                    </Label>
-                    {/* Six slots, not a password field: this is a code copied off
-                        a paper slip, and it should look like the slip. No reveal
-                        toggle — there is nothing hidden to reveal. */}
-                    <InputOTP
-                      id="family-pin"
-                      maxLength={6}
-                      value={pin}
-                      onChange={(v) => setPin(v.replace(/\D/g, ""))}
-                      onBlur={() => setPinTouched(true)}
-                      disabled={submitting}
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      aria-invalid={pinError}
-                      aria-describedby="family-pin-help"
-                      containerClassName="w-full gap-2"
-                    >
-                      <InputOTPGroup className="w-full gap-2">
-                        {[0, 1, 2, 3, 4, 5].map((i) => (
-                          <InputOTPSlot
-                            key={i}
-                            index={i}
-                            className={cn(
-                              "h-14 flex-1 rounded-field border border-border bg-sunken text-[1.375rem] font-semibold tabular-nums leading-none text-foreground transition-[border-color,box-shadow,background-color] duration-base ease-out first:rounded-l-field last:rounded-r-field",
-                              pinError && "border-danger",
-                            )}
-                          />
-                        ))}
-                      </InputOTPGroup>
-                    </InputOTP>
-                    <p
-                      id="family-pin-help"
-                      className={cn("t-caption", pinError ? "text-danger" : "text-muted-foreground")}
-                    >
-                      {t("familyPinHelp")}
-                    </p>
-                  </div>
 
                   <Button
                     type="submit"
@@ -399,7 +359,7 @@ export default function FamilyLogin() {
             )}
           </div>
 
-          {/* Losing a PIN must never be a dead end, so the way out is on the
+          {/* Losing the slip must never be a dead end, so the way out is on the
               screen before anyone has failed at it. */}
           <p className="mx-auto mt-6 flex max-w-[24rem] items-start justify-center gap-2 t-caption leading-relaxed text-muted-foreground">
             <ShieldCheck className="mt-px h-[15px] w-[15px] shrink-0 opacity-70" strokeWidth={1.7} />

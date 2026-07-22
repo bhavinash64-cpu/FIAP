@@ -199,16 +199,19 @@ export function resolveFamilyLink(token: string): Promise<LinkResolution> {
   return call<LinkResolution>({ action: "resolve", token });
 }
 
-export async function familyLogin(input: {
-  phone: string;
-  pin: string;
-  token?: string;
-}): Promise<AssessmentBundle> {
+/**
+ * The secure link's token plus the family's own phone number.
+ *
+ * `token` is not optional. It is the actual credential — the phone number is
+ * public information that merely confirms the right family is holding the right
+ * slip. Making it optional here is the one change that would turn this into an
+ * enumerable endpoint, so the type forbids it.
+ */
+export async function familyLogin(input: { phone: string; token: string }): Promise<AssessmentBundle> {
   const result = await call<AssessmentBundle & { session: StoredSession }>({
     action: "login",
     phone: input.phone,
-    pin: input.pin,
-    token: input.token ?? "",
+    token: input.token,
   });
   saveRespondentSession(result.session);
   return result;

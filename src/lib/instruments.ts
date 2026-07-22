@@ -325,6 +325,18 @@ const BDI: Instrument = {
   ],
 };
 
+// NOT the whole bank. A ninth built-in instrument — the 22-item Digital Use
+// Interview (study document 5) — is seeded by
+// supabase/migrations/20260722151500_digital_use_interview_module.sql instead.
+// It never existed in this file: it lived only in the prototype's legacy
+// `instruments`/`instrument_items` tables, which the bank was deliberately not
+// seeded from, and was found missing when the bank's 128 items were reconciled
+// against those tables' 150.
+//
+// It is deliberately not back-ported here. This constant must stay byte-for-byte
+// the thing 20260717130500_seed_question_bank.sql was generated from, or that
+// generated file silently stops matching its source. Read the bank through
+// @/lib/questionBank, which sees all nine.
 export const INSTRUMENTS: Instrument[] = [
   IRI,
   CIUS,

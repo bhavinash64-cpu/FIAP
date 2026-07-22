@@ -106,7 +106,7 @@ export const dict = {
   percentComplete: { en: "{n}% complete", te: "{n}% పూర్తయింది" },
 
   // ── Parent flow · encouragement ──────────────────────────────────────────
-  // Two moments only, across a run capped at 20 questions. Five would be one
+  // Two moments only, across a run capped at 25 questions. Five would be one
   // message every four screens, which is the tiring, patronising failure this
   // is meant to avoid. Adult in register: acknowledgement, never praise.
   encourageHalfway: { en: "Halfway there.", te: "సగం పూర్తయింది." },
@@ -205,6 +205,11 @@ export const dict = {
   familyErrExpired: { en: "This assessment link has expired. Please contact your field officer for a new one.", te: "ఈ మూల్యాంకన లింక్ గడువు ముగిసింది. కొత్తదాని కోసం మీ క్షేత్ర అధికారిని సంప్రదించండి." },
   familyErrTooMany: { en: "Too many attempts from this connection. Please try again a little later.", te: "ఈ కనెక్షన్ నుండి చాలా ప్రయత్నాలు జరిగాయి. దయచేసి కొంతసేపటి తర్వాత ప్రయత్నించండి." },
   familyErrNetwork: { en: "Couldn't reach the assessment. Please check your connection and try again.", te: "మూల్యాంకనాన్ని చేరుకోలేకపోయాము. దయచేసి మీ కనెక్షన్‌ను సరిచూసి మళ్లీ ప్రయత్నించండి." },
+  familyNeedLinkTitle: { en: "Open your assessment link", te: "మీ మూల్యాంకన లింక్‌ను తెరవండి" },
+  familyNeedLinkBody: {
+    en: "Scan the QR code on your assessment slip, or open the link your field officer gave you. You will then be asked for your phone number.",
+    te: "మీ మూల్యాంకన స్లిప్‌పై ఉన్న QR కోడ్‌ను స్కాన్ చేయండి, లేదా మీ క్షేత్ర అధికారి ఇచ్చిన లింక్‌ను తెరవండి. తర్వాత మీ ఫోన్ నంబర్ అడగబడుతుంది.",
+  },
   familyErrNotFound: { en: "This link is not valid", te: "ఈ లింక్ చెల్లదు" },
   familyErrNotFoundBody: { en: "Please check the link on your assessment slip, or scan the QR code again.", te: "మీ మూల్యాంకన స్లిప్‌పై ఉన్న లింక్‌ను సరిచూడండి, లేదా QR కోడ్‌ను మళ్లీ స్కాన్ చేయండి." },
   familySessionEnded: { en: "Your session has ended. Please sign in again to continue.", te: "మీ సెషన్ ముగిసింది. కొనసాగడానికి మళ్లీ సైన్ ఇన్ చేయండి." },

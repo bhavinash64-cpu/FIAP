@@ -7,7 +7,7 @@ import { useT } from "@/lib/i18n";
  *
  * Two constraints shape this into almost nothing:
  *
- *  - Published surveys are capped at 20 questions. The obvious cadence —
+ *  - Published surveys are capped at 25 questions. The obvious cadence —
  *    quarter, half, three-quarter, nearly-done — would be a message every four
  *    screens, which is the point at which encouragement stops reading as warmth
  *    and starts reading as a progress bar with opinions.

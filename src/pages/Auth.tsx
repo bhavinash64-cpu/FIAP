@@ -149,12 +149,16 @@ export default function Auth() {
             balanced as the viewport height changes because both halves move
             together.
           */}
-          <div className="relative z-0 flex min-h-0 flex-1 flex-col items-center justify-center gap-8 overflow-hidden py-8">
+          {/* items-start, not items-center: the copy is left-aligned against the
+              panel's own gutter so it shares an edge with the brand lockup above
+              it. Centred text under a left-aligned logo has two competing
+              margins and reads as an accident. */}
+          <div className="relative z-0 flex min-h-0 flex-1 flex-col items-start justify-center gap-6 overflow-hidden py-6">
             <motion.div
               initial="hidden"
               animate="show"
               variants={container}
-              className="w-full max-w-[30rem] shrink-0"
+              className="w-full max-w-[34rem] shrink-0"
             >
               <motion.p variants={item} className="eyebrow" style={{ color: "#5E43F3" }}>
                 {t("authPrivateWorkspace")}
@@ -186,7 +190,7 @@ export default function Auth() {
               initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1.1, ease: EASE, delay: 0.2 }}
-              className="shrink-0 [--illo:0.46] xl:[--illo:0.58] 2xl:[--illo:0.68]"
+              className="mx-auto shrink-0 [--illo:0.62] xl:[--illo:0.78] 2xl:[--illo:0.92]"
               style={{
                 width: "calc(560px * var(--illo))",
                 height: "calc(600px * var(--illo))",

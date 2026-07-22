@@ -693,8 +693,31 @@
    useDocLang() puts on <html>. */
 :lang(te) {
   font-family: "Noto Sans Telugu", "Inter", system-ui, sans-serif;
-  line-height: 1.7;
+  /*
+     NO global line-height override here — deliberately.
+
+     It used to set `line-height: 1.7` on everything, which is right for a
+     paragraph and wrong for the other 90% of the product: it inherited into
+     every nav row, table cell, badge and button, so switching to Telugu grew
+     the height of every single line and visibly re-laid-out the whole console.
+     Two languages must produce the SAME layout; only the glyphs change.
+
+     `font-size-adjust` is the part that actually matters for legibility. Noto
+     Sans Telugu has a smaller x-height than Inter, so at an identical font-size
+     Telugu genuinely reads smaller. Normalising the x-height fixes the apparent
+     size difference WITHOUT touching the box the text sits in — which is
+     exactly the distinction the line-height rule got wrong.
+  */
+  font-size-adjust: 0.52;
 }
+
+/* Loosened leading is applied to PROSE only, where conjuncts stack and the
+   text is read in sentences — never to chrome, where it moves the furniture. */
+:lang(te) .t-body,
+:lang(te) p {
+  line-height: 1.65;
+}
+
 /* The prompt is the largest reading text in the product and the place where
    cramped conjuncts cost the most. */
 :lang(te) .t-question {

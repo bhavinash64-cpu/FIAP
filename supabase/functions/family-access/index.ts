@@ -25,8 +25,8 @@ const corsHeaders = {
 
 /** A session outlives a sitting so a family can finish tomorrow, not a month later. */
 const SESSION_TTL_HOURS = 72;
-/** Wrong PINs before the case itself locks. Defends one known family. */
-const MAX_PIN_ATTEMPTS = 5;
+/** Wrong phone numbers against a real link before the case locks. */
+const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
 /** Login attempts per connection per 15 min. Defends against blind sweeps. */
 const IP_WINDOW_SECONDS = 900;
@@ -84,7 +84,7 @@ Deno.serve(async (req: Request) => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────
-// resolve — what a QR code or secure link may reveal BEFORE the PIN
+// resolve — what a QR code or secure link may reveal BEFORE sign-in
 //
 // Deliberately almost nothing: enough for the family to recognise that the
 // link is theirs, never enough for a stranger who found the slip to learn who
@@ -137,14 +137,23 @@ async function handleResolve(supabase: SupabaseClient, body: Json) {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// login — phone + PIN, optionally narrowed by the link token
+// login — the secure link, plus the family's own phone number
+//
+// The PIN is gone. The credential is now the ACCESS TOKEN in the link/QR: ~109
+// bits, per case, existing only on the printed slip. The phone number confirms
+// that the right family is holding the right slip.
+//
+// The token is therefore REQUIRED. A phone number is not a secret — it is on
+// the case file, known to relatives, and a 10-digit Indian mobile is guessable
+// within a district — so accepting "phone alone" here would make every
+// household's answers readable to anyone willing to enumerate numbers. If a
+// future change reintroduces a token-less path, that is the whole model gone.
 // ───────────────────────────────────────────────────────────────────────────
 async function handleLogin(supabase: SupabaseClient, body: Json, req: Request) {
   const phone = normalisePhone(str(body.phone));
-  const pin = str(body.pin).trim();
-  const token = str(body.token);
+  const token = str(body.token).trim();
 
-  if (!/^\d{10}$/.test(phone) || !/^\d{6}$/.test(pin)) {
+  if (!/^\d{10}$/.test(phone) || !token) {
     return json({ error: "invalid_credentials" }, 401);
   }
 
@@ -157,28 +166,26 @@ async function handleLogin(supabase: SupabaseClient, body: Json, req: Request) {
   if (throttleError) throw throttleError;
   if (!allowed) return json({ error: "too_many_attempts" }, 429);
 
-  // Look up by phone alone, then compare the PIN in constant time. Querying on
-  // the PIN directly would make "no row" mean either wrong-phone or wrong-PIN
-  // and leave no row to increment the lockout counter on — the counter has to
-  // live on a case we found.
-  let query = supabase
+  // Resolve the case by its token, then compare the phone in constant time.
+  // Filtering on the phone in SQL instead would make "no row" mean either
+  // wrong-token or wrong-phone and leave nothing to charge the lockout counter
+  // against — the counter has to live on a case we actually found.
+  const { data: rows, error } = await supabase
     .from("family_cases")
     .select("*")
-    .eq("phone", phone);
-  if (token) query = query.eq("access_token", token);
-  const { data: rows, error } = await query;
+    .eq("access_token", token)
+    .limit(1);
   if (error) throw error;
 
-  const candidates = (rows ?? []) as FamilyCaseRow[];
-  if (!candidates.length) return json({ error: "invalid_credentials" }, 401);
+  const matched = (rows ?? [])[0] as FamilyCaseRow | undefined;
+  if (!matched) return json({ error: "invalid_credentials" }, 401);
 
   const now = new Date();
-  const matched = candidates.find((c) => timingSafeEqual(c.pin, pin));
 
-  if (!matched) {
-    // Charge the failure to every case on that number, so guessing against a
-    // known phone locks out regardless of which of its cases was targeted.
-    for (const c of candidates) await registerFailure(supabase, c);
+  if (!timingSafeEqual(normalisePhone(matched.phone), phone)) {
+    // Wrong number against a real link. Charge it: five of these and the case
+    // locks, so someone holding a found slip cannot sit and try numbers.
+    await registerFailure(supabase, matched);
     return json({ error: "invalid_credentials" }, 401);
   }
 
@@ -208,7 +215,7 @@ async function handleLogin(supabase: SupabaseClient, body: Json, req: Request) {
 
 async function registerFailure(supabase: SupabaseClient, c: FamilyCaseRow) {
   const attempts = (c.failed_attempts ?? 0) + 1;
-  const locked = attempts >= MAX_PIN_ATTEMPTS;
+  const locked = attempts >= MAX_FAILED_ATTEMPTS;
   await supabase
     .from("family_cases")
     .update({
@@ -216,7 +223,7 @@ async function registerFailure(supabase: SupabaseClient, c: FamilyCaseRow) {
       locked_until: locked ? new Date(Date.now() + LOCKOUT_MINUTES * 60_000).toISOString() : c.locked_until,
     })
     .eq("id", c.id);
-  if (locked) await logEvent(supabase, c.id, "locked_out", { attempts: MAX_PIN_ATTEMPTS }, "system");
+  if (locked) await logEvent(supabase, c.id, "locked_out", { attempts: MAX_FAILED_ATTEMPTS }, "system");
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -570,7 +577,6 @@ interface FamilyCaseRow {
   reference_id: string;
   family_head_name: string;
   phone: string;
-  pin: string;
   preferred_language: string;
   survey_id: string;
   status: string;
