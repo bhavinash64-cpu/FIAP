@@ -43,6 +43,7 @@ import { Inspector, InspectorSection } from "@/components/admin/Inspector";
 import { MeterRow } from "@/components/admin/SectionPanel";
 import { CaseStatusBadge } from "@/components/family/CaseStatusBadge";
 import { CaseSlipSheet } from "@/components/family/CaseSlipSheet";
+import { FollowUpPanel } from "@/components/family/FollowUpPanel";
 import {
   caseQrFileName,
   daysUntil,
@@ -439,6 +440,11 @@ export function FamilyCaseInspector(props: {
                 </Button>
               )}
             </div>
+          </InspectorSection>
+
+          {/* ── Follow-up ───────────────────────────────────────────────── */}
+          <InspectorSection title="Follow-up">
+            <FollowUpPanel caseRow={caseRow} onChanged={onChanged} />
           </InspectorSection>
 
           {/* ── Timeline ────────────────────────────────────────────────── */}

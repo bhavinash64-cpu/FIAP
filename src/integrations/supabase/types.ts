@@ -2086,6 +2086,14 @@ export type Database = {
       }
       schedule_participant: { Args: { p_id: string }; Returns: number }
       set_cron_secret: { Args: { p_secret: string }; Returns: undefined }
+      survey_list_counts: {
+        Args: never
+        Returns: {
+          question_count: number
+          response_count: number
+          survey_id: string
+        }[]
+      }
       survey_period_comparison: {
         Args: { p_period: string; p_survey_id: string }
         Returns: {

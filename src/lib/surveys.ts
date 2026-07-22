@@ -88,20 +88,23 @@ const genSlug = customAlphabet("23456789abcdefghjkmnpqrstuvwxyz", 7);
 // ---------------------------------------------------------------------------
 
 export async function listSurveys(): Promise<SurveyWithCounts[]> {
-  const [{ data: surveys, error }, { data: questions }, { data: responses }] = await Promise.all([
+  // The counts are aggregated in Postgres (survey_list_counts, SECURITY
+  // INVOKER so the caller's RLS still applies). This used to pull every
+  // survey_questions row and every survey_responses row down to the browser
+  // and tally them here, which cost megabytes once a study had real responses
+  // — for two integers per row.
+  const [{ data: surveys, error }, { data: counts, error: countError }] = await Promise.all([
     supabase.from("surveys").select("*").order("created_at", { ascending: false }),
-    supabase.from("survey_questions").select("id, survey_id"),
-    supabase.from("survey_responses").select("id, survey_id"),
+    supabase.rpc("survey_list_counts"),
   ]);
   if (error) throw error;
-  const qCount = new Map<string, number>();
-  for (const q of questions ?? []) qCount.set(q.survey_id, (qCount.get(q.survey_id) ?? 0) + 1);
-  const rCount = new Map<string, number>();
-  for (const r of responses ?? []) rCount.set(r.survey_id, (rCount.get(r.survey_id) ?? 0) + 1);
+  if (countError) throw countError;
+
+  const byId = new Map((counts ?? []).map((c) => [c.survey_id, c]));
   return (surveys ?? []).map((s) => ({
     ...(s as Survey),
-    question_count: qCount.get(s.id) ?? 0,
-    response_count: rCount.get(s.id) ?? 0,
+    question_count: byId.get(s.id)?.question_count ?? 0,
+    response_count: byId.get(s.id)?.response_count ?? 0,
   }));
 }
 

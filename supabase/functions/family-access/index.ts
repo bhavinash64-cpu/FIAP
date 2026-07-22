@@ -182,15 +182,25 @@ async function handleLogin(supabase: SupabaseClient, body: Json, req: Request) {
 
   const now = new Date();
 
+  // The lockout is checked BEFORE the phone is compared, and that order is the
+  // whole point of it. Checking after meant a wrong number returned 401 and
+  // returned early, so the lock was only ever consulted on the path where the
+  // caller had ALREADY produced the right phone — i.e. never for the attacker
+  // it exists to stop. Worse, registerFailure() zeroes failed_attempts when it
+  // locks, so every fifth guess reset the counter and the lock it set was never
+  // read: someone holding a found slip could try numbers indefinitely, bounded
+  // only by the per-IP throttle. Guessing a 10-digit Indian mobile within a
+  // known district is feasible; this was the last barrier in front of one
+  // household's answers.
+  if (matched.locked_until && new Date(matched.locked_until) > now) {
+    return json({ error: "locked", retryAt: matched.locked_until }, 423);
+  }
+
   if (!timingSafeEqual(normalisePhone(matched.phone), phone)) {
     // Wrong number against a real link. Charge it: five of these and the case
     // locks, so someone holding a found slip cannot sit and try numbers.
     await registerFailure(supabase, matched);
     return json({ error: "invalid_credentials" }, 401);
-  }
-
-  if (matched.locked_until && new Date(matched.locked_until) > now) {
-    return json({ error: "locked", retryAt: matched.locked_until }, 423);
   }
   if (matched.status === "expired" || new Date(matched.expires_at) < now) {
     return json({ error: "expired" }, 403);
@@ -374,7 +384,10 @@ async function handleSubmit(supabase: SupabaseClient, body: Json, req: Request) 
       };
     }
     if (typeof value === "number" && Number.isFinite(value)) {
-      return { ...base, value_int: value };
+      // value_int is an integer column: a non-integral number from a tampered
+      // or malformed payload would make the whole INSERT fail and lose the
+      // family's entire submission, so clamp it into range rather than trust it.
+      return { ...base, value_int: Math.trunc(Math.min(2_147_483_647, Math.max(-2_147_483_648, value))) };
     }
     return { ...base, value_text: typeof value === "string" ? value.slice(0, MAX_TEXT_ANSWER_LENGTH) : "" };
   });

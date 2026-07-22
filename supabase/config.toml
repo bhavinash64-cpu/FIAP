@@ -1,9 +1,11 @@
-# Must match the project VITE_SUPABASE_URL points at. It did not: this file
-# named `wfuxtealkrudukvpmtrg` while the app has always talked to
-# `atlekmwlqweqxrfbvwie`. Every `supabase link` / `db push` / `functions deploy`
-# run from this repo was therefore aimed at the wrong project, which is why the
-# migrations are live but not one edge function is deployed.
-project_id = "atlekmwlqweqxrfbvwie"
+# MUST match the project that VITE_SUPABASE_URL in .env points at.
+#
+# This has already gone wrong once and cost a day: the file named one project
+# while the app talked to another, so every `supabase link` / `db push` /
+# `functions deploy` run from this repo was aimed at a project nothing read —
+# which is how the schema ended up live with not one edge function deployed.
+# If you change one, change the other in the same commit.
+project_id = "REPLACE_WITH_PROJECT_REF"
 
 [auth]
 enable_signup = false
@@ -18,7 +20,10 @@ verify_jwt = true
 [functions.submit-response]
 verify_jwt = false
 
-# Respondents hold no Supabase JWT by design — the function authenticates them
-# itself, against the family case's own PIN and session token.
+# MUST stay false. Respondents hold no Supabase JWT by design — the function
+# authenticates them itself, against the case's access token (the secret in the
+# link/QR), the family's phone number, and its own session token. Turning JWT
+# verification on here returns 401 to every family and kills the entire
+# respondent flow, with nothing in the UI to explain why.
 [functions.family-access]
 verify_jwt = false
