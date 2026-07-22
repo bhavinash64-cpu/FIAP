@@ -319,7 +319,7 @@ async function exportMatrixWorkbook(setBusy: Progress) {
   const data = await loadFamilyResearchData();
   setBusy("Building workbook…");
   const blob = await buildFamilyResearchWorkbook(data);
-  downloadBlob(blob, `jeevana-family-research-${stamp()}.xlsx`);
+  downloadBlob(blob, `psydigihealth-family-research-${stamp()}.xlsx`);
 }
 
 async function exportResponseWorkbook(surveyId: string, setBusy: Progress) {
@@ -400,7 +400,7 @@ async function exportReportDocument(
   };
 
   if (format === "doc") {
-    exportWordDocument(meta, [summary, detail], `jeevana-response-report-${stamp()}`);
+    exportWordDocument(meta, [summary, detail], `psydigihealth-response-report-${stamp()}`);
     return;
   }
   setBusy("Opening print view…");

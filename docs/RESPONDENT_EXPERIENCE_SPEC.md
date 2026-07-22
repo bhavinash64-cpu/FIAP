@@ -1,4 +1,4 @@
-# JEEVANA INSIGHT — RESPONDENT EXPERIENCE
+# PSYDIGIHEALTH — RESPONDENT EXPERIENCE
 ## LOCKED SPECIFICATION v1.0 · build this verbatim
 
 Status: **LOCKED.** Every number here is a decision, not a suggestion. Where a value is absent from
@@ -23,7 +23,7 @@ capped at **20 questions**, enforced in the database by a trigger in
 
 `MAX_ANSWER_COUNT = 20` in `supabase/functions/submit-response/index.ts` is the matching submission
 guard, not a bug. This is a research-governance control that sits alongside
-`docs/APFAP_PII_Information_Security_and_Research_Ethics_Framework.docx`. **Do not raise either limit.**
+`docs/PsyDigiHealth_PII_Information_Security_and_Research_Ethics_Framework.docx`. **Do not raise either limit.**
 The 8 instruments are split into separate reviewed modules, each its own survey. A family may complete
 several modules over time; never 154 items in one run.
 

@@ -189,7 +189,7 @@ function SidebarBody({ expanded }: { expanded: boolean }) {
         </motion.span>
         {expanded && (
           <div className="min-w-0 leading-tight">
-            <div className="truncate t-card font-semibold tracking-tight">Jeevana Insight</div>
+            <div className="truncate t-card font-semibold tracking-tight">PsyDigiHealth</div>
             <div className="truncate t-caption text-muted-foreground">{t("orgLine")}</div>
           </div>
         )}
@@ -398,7 +398,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
           <div className="flex min-w-0 items-center gap-2 md:hidden">
             <Logo size={32} />
-            <span className="truncate t-card font-semibold tracking-tight">Jeevana Insight</span>
+            <span className="truncate t-card font-semibold tracking-tight">PsyDigiHealth</span>
           </div>
           <div className="flex-1" />
           <LangToggle size="sm" />

@@ -139,14 +139,14 @@ export default function HelpAbout() {
               J
             </div>
             <div>
-              <div className="t-card font-semibold">Jeevana Insight</div>
+              <div className="t-card font-semibold">PsyDigiHealth</div>
               <div className="t-caption text-muted-foreground">{t("orgLine")}</div>
             </div>
           </div>
           <dl className="mt-5 divide-y divide-border">
             <Row label="Version" value={APP_VERSION} />
             <Row label="Platform" value={t("orgLine")} />
-            <Row label="Support" value="support@jeevanainsight.app" />
+            <Row label="Support" value="support@psydigihealth.app" />
           </dl>
           <p className="mt-5 t-caption leading-relaxed text-muted-foreground">
             Built to support family well-being research. Family responses are confidential and used only for

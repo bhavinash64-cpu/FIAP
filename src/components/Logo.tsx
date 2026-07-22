@@ -2,7 +2,7 @@ import logoUrl from "@/assets/logo.png";
 import { cn } from "@/lib/utils";
 
 /**
- * The Jeevana Insight logo — the single approved artwork, used everywhere.
+ * The PsyDigiHealth logo — the single approved artwork, used everywhere.
  *
  * The source is a square, high-resolution PNG on a white ground. It is used
  * exactly as provided: never stretched (always 1:1), never recoloured, never
@@ -21,7 +21,7 @@ export function Logo({
   container = true,
   /** Container corner radius; defaults to a soft proportion of the size. */
   radius,
-  alt = "Jeevana Insight",
+  alt = "PsyDigiHealth",
 }: {
   size?: number;
   className?: string;

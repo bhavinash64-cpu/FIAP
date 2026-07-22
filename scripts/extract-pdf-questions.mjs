@@ -68,7 +68,7 @@ async function extractAllQuestions() {
   
   console.log(`\n\n📊 TOTAL QUESTIONS EXTRACTED: ${allQuestions.length}`);
   
-  const outputPath = "D:/AP Police Wellbeing Hub/extracted-questions.json";
+  const outputPath = "extracted-questions.json";
   fs.writeFileSync(outputPath, JSON.stringify(allQuestions, null, 2));
   console.log(`\n💾 Saved to ${outputPath}`);
   

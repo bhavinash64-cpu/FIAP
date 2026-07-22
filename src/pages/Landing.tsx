@@ -20,7 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 
 /* ────────────────────────────────────────────────────────────────────────
-   Jeevana Insight — the platform's front door.
+   PsyDigiHealth — the platform's front door.
 
    The layout and copy are fixed. This file's job is the *feel*: a product
    portal that reads as expensive software — cinematic reveals, physical
@@ -218,7 +218,7 @@ export default function Landing() {
           <Link to="/" className={cn("flex min-w-0 items-center gap-2.5 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]", scrolled && "scale-[0.97]")}>
             <Logo size={40} />
             <span className="min-w-0 leading-tight">
-              <span className="block truncate t-caption font-semibold tracking-tight">Jeevana Insight</span>
+              <span className="block truncate t-caption font-semibold tracking-tight">PsyDigiHealth</span>
               <span className="hidden text-[11px] text-muted-foreground sm:block">Family Assessment Research Platform</span>
             </span>
           </Link>
@@ -520,7 +520,7 @@ export default function Landing() {
             <div className="max-w-sm">
               <div className="flex items-center gap-2.5">
                 <Logo size={36} />
-                <span className="t-card font-semibold tracking-tight">Jeevana Insight</span>
+                <span className="t-card font-semibold tracking-tight">PsyDigiHealth</span>
               </div>
               <p className="mt-3 t-caption leading-relaxed text-muted-foreground">
                 A secure family-assessment research platform for authorised research teams and
@@ -543,7 +543,7 @@ export default function Landing() {
           </div>
 
           <div className="mt-10 flex flex-col items-start justify-between gap-4 border-t border-border pt-6 sm:flex-row sm:items-center">
-            <div className="t-caption text-muted-foreground">© 2026 Jeevana Insight · Family Assessment Research Platform</div>
+            <div className="t-caption text-muted-foreground">© 2026 PsyDigiHealth · Family Assessment Research Platform</div>
             <div className="flex items-center gap-4">
               <span className="t-caption text-tertiary">v1.0</span>
               <LangToggle size="sm" />

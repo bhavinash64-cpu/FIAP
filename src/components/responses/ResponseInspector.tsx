@@ -213,7 +213,7 @@ export function ResponseInspector({
               ))}
             </ol>
             <p className="mt-8 flex items-center gap-2 text-xs opacity-70">
-              <FileText className="h-3.5 w-3.5" /> Jeevana Insight · Family assessment research
+              <FileText className="h-3.5 w-3.5" /> PsyDigiHealth · Family assessment research
             </p>
           </div>
         </PrintSheet>

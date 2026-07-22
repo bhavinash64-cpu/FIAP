@@ -1,4 +1,4 @@
-# Jeevana Insight — Design System Overhaul Plan
+# PsyDigiHealth — Design System Overhaul Plan
 
 Goal: one unified, tight, editorial design language across every screen — Apple / Linear /
 Stripe / Notion / Cred calm. Every visual value comes from tokens. Calibrated to the

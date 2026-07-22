@@ -1,4 +1,4 @@
-# Jeevana Insight — credentialled family assessment workflow
+# PsyDigiHealth — credentialled family assessment workflow
 
 Turns the platform from an anonymous survey tool into a controlled research
 instrument. A field officer creates a **family case** per household; the system

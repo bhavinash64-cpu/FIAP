@@ -1,5 +1,5 @@
 -- ==============================================================
--- Jeevana Insight — PENDING MIGRATIONS
+-- PsyDigiHealth — PENDING MIGRATIONS
 --
 -- Four migrations have not been applied to the live database.
 -- Until they are, /app/families shows "Something went wrong"

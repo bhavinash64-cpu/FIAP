@@ -55,7 +55,7 @@ export function ProductShowcase() {
           </div>
           <div className="mx-auto flex w-full max-w-sm items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 py-1">
             <Lock className="h-3 w-3 text-tertiary" strokeWidth={2} />
-            <span className="truncate text-[11px] text-muted-foreground">jeevana.ap.gov.in{active.path}</span>
+            <span className="truncate text-[11px] text-muted-foreground">psydigihealth.app{active.path}</span>
           </div>
         </div>
 
@@ -92,8 +92,8 @@ function ConsoleShell({ active, children }: { active: string; children: React.Re
     <div className="flex h-full text-foreground">
       <aside className="hidden w-[168px] shrink-0 flex-col gap-0.5 border-r border-border bg-card p-3 sm:flex">
         <div className="mb-3 flex items-center gap-2 px-1">
-          <span className="grid h-6 w-6 place-items-center rounded-lg bg-primary text-[11px] font-bold text-primary-foreground">J</span>
-          <span className="t-caption font-semibold">Jeevana</span>
+          <span className="grid h-6 w-6 place-items-center rounded-lg bg-primary text-[11px] font-bold text-primary-foreground">P</span>
+          <span className="t-caption font-semibold">PsyDigiHealth</span>
         </div>
         {nav.map((n) => (
           <div
@@ -286,7 +286,7 @@ function AssessmentScreen() {
         <span className="grid h-6 w-6 place-items-center rounded-lg bg-primary text-[11px] font-bold text-primary-foreground">
           <Users className="h-3.5 w-3.5" strokeWidth={1.8} />
         </span>
-        <span className="text-[11px] font-semibold">Jeevana Insight · Family Assessment</span>
+        <span className="text-[11px] font-semibold">PsyDigiHealth · Family Assessment</span>
         <span className="ml-auto flex overflow-hidden rounded-lg border border-border text-[9px] font-semibold">
           <span className="bg-primary px-1.5 py-0.5 text-primary-foreground">EN</span>
           <span className="px-1.5 py-0.5 text-muted-foreground">తెలుగు</span>

@@ -14,7 +14,7 @@ import { useT, type Translator } from "@/lib/i18n";
 import { toast } from "sonner";
 
 /* ────────────────────────────────────────────────────────────────────────
-   Jeevana Insight — Sign in
+   PsyDigiHealth — Sign in
    The quietest, most crafted surface in the product. A calm editorial left
    with a handcrafted floating sculpture, a single luminous login card on the
    right. Bespoke premium values (spacing 4/8/12/16/24/32/48; radii up to 36;
@@ -131,7 +131,7 @@ export default function Auth() {
           >
             <Logo size={44} radius={14} />
             <div className="min-w-0 leading-tight">
-              <span className="block truncate t-body font-semibold tracking-tight">Jeevana Insight</span>
+              <span className="block truncate t-body font-semibold tracking-tight">PsyDigiHealth</span>
               <span className="block truncate t-caption text-muted-foreground">Family Assessment Platform</span>
             </div>
           </motion.div>
@@ -242,7 +242,7 @@ export default function Auth() {
             <div className="mb-4 flex items-center justify-center gap-2.5 sm:mb-6 lg:hidden">
               <Logo size={40} radius={13} />
               <span className="leading-tight">
-                <span className="block t-caption font-semibold tracking-tight">Jeevana Insight</span>
+                <span className="block t-caption font-semibold tracking-tight">PsyDigiHealth</span>
                 <span className="block text-[11px] text-muted-foreground">Family Assessment Platform</span>
               </span>
             </div>

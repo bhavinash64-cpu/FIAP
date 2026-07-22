@@ -76,7 +76,7 @@ export default function DemoPreview() {
               <Shield className="h-5 w-5 text-primary-foreground" />
             </div>
             <div className="leading-tight">
-              <div className="text-sm font-semibold tracking-tight">APFAP</div>
+              <div className="text-sm font-semibold tracking-tight">PsyDigiHealth</div>
               <div className="t-caption text-muted-foreground">Family Assessment</div>
             </div>
           </div>

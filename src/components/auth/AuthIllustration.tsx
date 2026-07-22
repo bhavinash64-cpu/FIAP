@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 
 /*  ───────────────────────────────────────────────────────────────────────
-    Jeevana Insight — sign-in illustration.
+    PsyDigiHealth — sign-in illustration.
 
     A single cohesive sculpture: three floating survey/analytics/profile cards
     resting above a tiered ceramic pedestal, tied together by faint

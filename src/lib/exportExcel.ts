@@ -10,7 +10,7 @@ const HEADER_FONT = "FFFFFFFF";
 export async function buildResponsesWorkbook(survey: Survey, questions: SurveyQuestion[], rows: ExportResponseRow[]): Promise<Blob> {
   const { default: ExcelJS } = await import("exceljs");
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Jeevana Insight";
+  wb.creator = "PsyDigiHealth";
   wb.created = new Date();
 
   const sheet = wb.addWorksheet("Responses", { views: [{ state: "frozen", ySplit: 1 }] });
@@ -75,7 +75,7 @@ export interface SingleResponseExport {
 export async function buildSingleResponseWorkbook(input: SingleResponseExport): Promise<Blob> {
   const { default: ExcelJS } = await import("exceljs");
   const wb = new ExcelJS.Workbook();
-  wb.creator = "AP Police Family Assessment Platform";
+  wb.creator = "PsyDigiHealth";
   wb.created = new Date();
 
   const sheet = wb.addWorksheet("Response");

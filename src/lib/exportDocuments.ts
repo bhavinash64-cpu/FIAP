@@ -38,7 +38,7 @@ const LANDSCAPE_COLUMN_THRESHOLD = 12;
  */
 export const MAX_DOCUMENT_COLUMNS = 24;
 
-const PRODUCT_NAME = "Jeevana Insight";
+const PRODUCT_NAME = "PsyDigiHealth";
 const ORG_LINE = "Family Assessment Research Platform";
 const CONFIDENTIAL_NOTE =
   "Confidential research data. Handle, store and dispose of this file in line with the study's data protection protocol.";

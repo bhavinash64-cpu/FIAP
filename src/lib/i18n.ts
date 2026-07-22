@@ -18,8 +18,8 @@ type Dict = Record<string, { en: string; te: string }>;
 // never a mixed page. Authored survey content (titles, prompts, options)
 // resolves through renderBilingual() instead.
 export const dict = {
-  appName: { en: "Jeevana Insight", te: "జీవన ఇన్‌సైట్" },
-  appShort: { en: "Jeevana Insight", te: "జీవన ఇన్‌సైట్" },
+  appName: { en: "PsyDigiHealth", te: "సైడిజిహెల్త్" },
+  appShort: { en: "PsyDigiHealth", te: "సైడిజిహెల్త్" },
   /** The institutional line under the product name. Deliberately organisation-
    *  neutral: this platform is not tied to any department or jurisdiction. */
   orgLine: { en: "Family Assessment Research Platform", te: "కుటుంబ మూల్యాంకన పరిశోధన వేదిక" },

@@ -9,10 +9,10 @@ interface OriginVisibilityState {
 }
 
 export const useOriginVisibility = create<OriginVisibilityState>((set) => ({
-  visible: (typeof window !== "undefined" && localStorage.getItem("apfap-show-origin") !== "0"),
+  visible: (typeof window !== "undefined" && localStorage.getItem("psydigihealth-show-origin") !== "0"),
   toggle: () => set((s) => {
     const next = !s.visible;
-    if (typeof window !== "undefined") localStorage.setItem("apfap-show-origin", next ? "1" : "0");
+    if (typeof window !== "undefined") localStorage.setItem("psydigihealth-show-origin", next ? "1" : "0");
     return { visible: next };
   }),
 }));

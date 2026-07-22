@@ -99,7 +99,7 @@ export default function SurveyReport() {
             <Shield className="h-6 w-6 text-primary-foreground" strokeWidth={1.5} />
           </div>
           <div>
-            <div className="t-body font-semibold">Jeevana Insight</div>
+            <div className="t-body font-semibold">PsyDigiHealth</div>
             <div className="t-caption text-muted-foreground">Family Assessment Research Platform</div>
           </div>
         </div>
@@ -163,7 +163,7 @@ export default function SurveyReport() {
       </div>
 
       <footer className="report-section mt-8 pt-4 border-t border-border t-caption text-muted-foreground text-center">
-        Research report · Jeevana Insight · For authorised use only
+        Research report · PsyDigiHealth · For authorised use only
       </footer>
     </div>
   );

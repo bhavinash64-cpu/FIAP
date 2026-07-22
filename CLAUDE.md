@@ -1,4 +1,4 @@
-# Jeevana Insight — Family Assessment Research Platform
+# PsyDigiHealth — Family Assessment Research Platform
 
 Vite + React 18 + TypeScript · Tailwind + shadcn/ui · framer-motion · Supabase (Postgres, Auth, RLS, Edge Functions).
 
@@ -95,9 +95,12 @@ No hex, spacing, radius, shadow, duration or easing literal belongs anywhere els
 
 ## Product rules
 
-- **Never** mention "Government", "Governance", or "AP Police" anywhere. The
-  platform is organisation-neutral: product name **Jeevana Insight**, byline
-  `orgLine` → "Family Assessment Research Platform".
+- **Never** mention "Government", "Governance", or any police force, department
+  or jurisdiction by name anywhere. The platform is organisation-neutral:
+  product name **PsyDigiHealth**, byline `orgLine` → "Family Assessment
+  Research Platform". This rule used to name the specific force it was guarding
+  against, which meant the banned string was itself in the repo; it is phrased
+  by category now so the rule can be stated without breaking itself.
 - **No WhatsApp or SMS** share channels. Email, copy-link, QR download/print only —
   a confidential well-being link must not land in a consumer messaging app.
 - Bilingual EN/TE. UI chrome resolves through `useT()`; authored survey content

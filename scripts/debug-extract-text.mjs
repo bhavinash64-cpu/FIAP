@@ -50,8 +50,8 @@ async function extractAndSaveText() {
       }
       
       // Save the extracted text for analysis
-      const outputPath = `D:/AP Police Wellbeing Hub/extracted-text/${pdfFile.replace('.pdf', '.txt')}`;
-      fs.mkdirSync('D:/AP Police Wellbeing Hub/extracted-text', { recursive: true });
+      const outputPath = `extracted-text/${pdfFile.replace('.pdf', '.txt')}`;
+      fs.mkdirSync('extracted-text', { recursive: true });
       fs.writeFileSync(outputPath, fullText);
       console.log(`  💾 Saved text to ${outputPath}`);
       

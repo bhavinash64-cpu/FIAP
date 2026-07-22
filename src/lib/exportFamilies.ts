@@ -611,7 +611,7 @@ export async function buildFamilyResearchWorkbook(input: FamilyResearchData): Pr
   // the same line works in exportExcel.ts, which never forces that resolution.
   const ExcelJS = await import("exceljs");
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Jeevana Insight";
+  wb.creator = "PsyDigiHealth";
   wb.created = new Date();
 
   const usedNames = new Set<string>();
@@ -889,6 +889,6 @@ export async function exportFamilyCasesWorkbook(
 ): Promise<void> {
   const data = await loadFamilyResearchData(rows.map((r) => r.id));
   const blob = await buildFamilyResearchWorkbook(data);
-  const stem = opts.fileName ? slugifyFilename(opts.fileName) : `jeevana-family-research-${todayStamp()}`;
+  const stem = opts.fileName ? slugifyFilename(opts.fileName) : `psydigihealth-family-research-${todayStamp()}`;
   downloadBlob(blob, `${stem}.xlsx`);
 }

@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* ══════════════════════════════════════════════════════════════════════════
-   JEEVANA INSIGHT — DESIGN TOKENS · single source of truth
+   PSYDIGIHEALTH — DESIGN TOKENS · single source of truth
    No hex / spacing / radius / shadow / size / easing lives anywhere but here.
    Values below are the exact spec set; colors are stored as HSL channels so the
    shadcn `hsl(var(--x))` plumbing and `/opacity` modifiers keep working.
