@@ -9,8 +9,8 @@ import type { Database } from "./types";
 // project) crashes on boot with "supabaseUrl is required" and renders a blank
 // page. Env vars still take precedence, so staging/other projects can override.
 // A secret/service-role key must NEVER appear here — the guard below enforces it.
-const FALLBACK_SUPABASE_URL = "https://atlekmwlqweqxrfbvwie.supabase.co";
-const FALLBACK_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_QQMGneV47qP0ekjdYTGM4w_BmKgBg3a";
+const FALLBACK_SUPABASE_URL = "https://rmqyyyhkpcspnksarofv.supabase.co";
+const FALLBACK_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_eW_zqhU5HBMKOSK4b38wUQ_Q5Zzl1sk";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || FALLBACK_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || FALLBACK_SUPABASE_PUBLISHABLE_KEY;

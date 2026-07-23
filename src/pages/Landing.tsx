@@ -5,7 +5,7 @@ import {
   ArrowRight, Lock, BookOpen, LifeBuoy,
   ClipboardList, Library, QrCode, Users, BarChart3, FileText, ScrollText,
   ShieldCheck, KeyRound, Database, Fingerprint, EyeOff,
-  FlaskConical, Landmark, Building2, Stethoscope, GraduationCap,
+  FlaskConical, Building2, Stethoscope, GraduationCap,
   BadgeCheck, type LucideIcon,
 } from "lucide-react";
 import { LangToggle } from "@/components/LangToggle";
@@ -132,8 +132,8 @@ const SECURITY: { icon: LucideIcon; title: string; line: string }[] = [
 
 const SECTORS: { icon: LucideIcon; label: string }[] = [
   { icon: FlaskConical, label: "Research" },
-  { icon: Landmark, label: "Public Institutions" },
-  { icon: Building2, label: "Public Sector" },
+  { icon: Users, label: "Nonprofits & NGOs" },
+  { icon: Building2, label: "Community Programs" },
   { icon: Stethoscope, label: "Healthcare" },
   { icon: GraduationCap, label: "Academic Organizations" },
 ];
@@ -289,7 +289,7 @@ export default function Landing() {
               transition={{ duration: 0.8, ease: PREMIUM_EASE, delay: 0.3 }}
               className="mt-3 max-w-xl t-caption text-muted-foreground"
             >
-              Built for authorised researchers, institutions and public sector organisations to conduct structured
+              Built for authorised researchers and institutions to conduct structured
               family assessments using validated research instruments.
             </motion.p>
 
@@ -497,7 +497,7 @@ export default function Landing() {
       <section className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <Reveal className="text-center">
           <SectionEyebrow>Built for</SectionEyebrow>
-          <RevealHeading lines={["Serving research and public institutions"]} className="mx-auto mt-3 max-w-2xl t-title font-semibold tracking-tight" />
+          <RevealHeading lines={["Serving research and wellbeing teams"]} className="mx-auto mt-3 max-w-2xl t-title font-semibold tracking-tight" />
         </Reveal>
         <div className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {SECTORS.map((s, i) => (

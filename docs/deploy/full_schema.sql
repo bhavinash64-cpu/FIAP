@@ -11,7 +11,7 @@
 -- ####################################################################
 
 -- Enums
-CREATE TYPE public.app_role AS ENUM ('admin', 'police', 'researcher', 'analyst');
+CREATE TYPE public.app_role AS ENUM ('admin', 'staff', 'researcher', 'analyst');
 CREATE TYPE public.study_group AS ENUM ('case', 'control');
 CREATE TYPE public.instrument_type AS ENUM ('DEMOGRAPHIC', 'PID5BF', 'IRI', 'CIUS', 'DIGITAL_USE', 'SUICIDE_HISTORY');
 CREATE TYPE public.session_status AS ENUM ('in_progress', 'completed', 'abandoned');
@@ -97,11 +97,11 @@ GRANT ALL ON public.participants TO service_role;
 ALTER TABLE public.participants ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Staff view participants" ON public.participants FOR SELECT TO authenticated
-  USING (public.current_user_has_any_role(ARRAY['admin','police','researcher','analyst']::public.app_role[]));
+  USING (public.current_user_has_any_role(ARRAY['admin','staff','researcher','analyst']::public.app_role[]));
 CREATE POLICY "Fieldstaff create participants" ON public.participants FOR INSERT TO authenticated
-  WITH CHECK (public.current_user_has_any_role(ARRAY['admin','police','researcher']::public.app_role[]));
+  WITH CHECK (public.current_user_has_any_role(ARRAY['admin','staff','researcher']::public.app_role[]));
 CREATE POLICY "Fieldstaff update participants" ON public.participants FOR UPDATE TO authenticated
-  USING (public.current_user_has_any_role(ARRAY['admin','police','researcher']::public.app_role[]));
+  USING (public.current_user_has_any_role(ARRAY['admin','staff','researcher']::public.app_role[]));
 CREATE POLICY "Admin delete participants" ON public.participants FOR DELETE TO authenticated
   USING (public.has_role(auth.uid(), 'admin'));
 
@@ -125,11 +125,11 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.assessment_sessions TO authentica
 GRANT ALL ON public.assessment_sessions TO service_role;
 ALTER TABLE public.assessment_sessions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Staff view sessions" ON public.assessment_sessions FOR SELECT TO authenticated
-  USING (public.current_user_has_any_role(ARRAY['admin','police','researcher','analyst']::public.app_role[]));
+  USING (public.current_user_has_any_role(ARRAY['admin','staff','researcher','analyst']::public.app_role[]));
 CREATE POLICY "Fieldstaff write sessions" ON public.assessment_sessions FOR INSERT TO authenticated
-  WITH CHECK (public.current_user_has_any_role(ARRAY['admin','police','researcher']::public.app_role[]));
+  WITH CHECK (public.current_user_has_any_role(ARRAY['admin','staff','researcher']::public.app_role[]));
 CREATE POLICY "Fieldstaff update sessions" ON public.assessment_sessions FOR UPDATE TO authenticated
-  USING (public.current_user_has_any_role(ARRAY['admin','police','researcher']::public.app_role[]));
+  USING (public.current_user_has_any_role(ARRAY['admin','staff','researcher']::public.app_role[]));
 CREATE POLICY "Admin delete sessions" ON public.assessment_sessions FOR DELETE TO authenticated
   USING (public.has_role(auth.uid(), 'admin'));
 
@@ -148,11 +148,11 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.assessment_responses TO authentic
 GRANT ALL ON public.assessment_responses TO service_role;
 ALTER TABLE public.assessment_responses ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Staff view responses" ON public.assessment_responses FOR SELECT TO authenticated
-  USING (public.current_user_has_any_role(ARRAY['admin','police','researcher','analyst']::public.app_role[]));
+  USING (public.current_user_has_any_role(ARRAY['admin','staff','researcher','analyst']::public.app_role[]));
 CREATE POLICY "Fieldstaff write responses" ON public.assessment_responses FOR INSERT TO authenticated
-  WITH CHECK (public.current_user_has_any_role(ARRAY['admin','police','researcher']::public.app_role[]));
+  WITH CHECK (public.current_user_has_any_role(ARRAY['admin','staff','researcher']::public.app_role[]));
 CREATE POLICY "Fieldstaff update responses" ON public.assessment_responses FOR UPDATE TO authenticated
-  USING (public.current_user_has_any_role(ARRAY['admin','police','researcher']::public.app_role[]));
+  USING (public.current_user_has_any_role(ARRAY['admin','staff','researcher']::public.app_role[]));
 CREATE POLICY "Admin delete responses" ON public.assessment_responses FOR DELETE TO authenticated
   USING (public.has_role(auth.uid(), 'admin'));
 
@@ -217,7 +217,7 @@ ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'super_admin';
 -- =========================================================
 -- 1) Backfill roles → super_admin, and update signup trigger
 -- =========================================================
-UPDATE public.user_roles SET role = 'super_admin' WHERE role IN ('admin','police','researcher','analyst');
+UPDATE public.user_roles SET role = 'super_admin' WHERE role IN ('admin','staff','researcher','analyst');
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
@@ -1462,7 +1462,7 @@ CREATE POLICY "Options: public read of published surveys"
 -- ####################################################################
 -- 20260718113000_submission_integrity_and_survey_limits.sql
 -- ####################################################################
-﻿-- Keep public wellbeing surveys short and make the submission rate limit atomic.
+-- Keep public wellbeing surveys short and make the submission rate limit atomic.
 CREATE OR REPLACE FUNCTION public.enforce_published_survey_question_limit()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE question_total integer;
