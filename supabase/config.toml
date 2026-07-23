@@ -5,7 +5,7 @@
 # `functions deploy` run from this repo was aimed at a project nothing read —
 # which is how the schema ended up live with not one edge function deployed.
 # If you change one, change the other in the same commit.
-project_id = "REPLACE_WITH_PROJECT_REF"
+project_id = "rmqyyyhkpcspnksarofv"
 
 [auth]
 enable_signup = false
