@@ -6,10 +6,12 @@
 // routes the result through a human review screen before anything is
 // persisted (see ImportPdfDialog.tsx / lib/surveys.ts#importQuestions).
 //
-// Requires one of these secrets to be set on the Supabase project:
-//   OPENAI_API_KEY     -> calls the OpenAI API directly (gpt-4o-mini)
-//   ANTHROPIC_API_KEY  -> calls the Anthropic API directly (claude-haiku-4-5)
-// Set with: supabase secrets set OPENAI_API_KEY=sk-...
+// Requires ONE of these secrets on the Supabase project. They are checked in
+// this order, so setting GEMINI_API_KEY alone is enough:
+//   GEMINI_API_KEY     -> Google AI Studio / Gemini (gemini-flash-latest)
+//   OPENAI_API_KEY     -> OpenAI (gpt-4o-mini)
+//   ANTHROPIC_API_KEY  -> Anthropic (claude-haiku-4-5)
+// Set with: supabase secrets set GEMINI_API_KEY=...
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
@@ -51,19 +53,43 @@ Deno.serve(async (req: Request) => {
 
     const trimmed = text.slice(0, 24000); // keep prompts bounded even for large PDFs
 
+    const geminiKey = Deno.env.get("GEMINI_API_KEY");
     const openaiKey = Deno.env.get("OPENAI_API_KEY");
     const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
 
-    if (!openaiKey && !anthropicKey) {
+    if (!geminiKey && !openaiKey && !anthropicKey) {
       return json(
-        { error: "AI extraction is not configured. Set the OPENAI_API_KEY or ANTHROPIC_API_KEY secret on this Supabase project." },
+        { error: "AI extraction is not configured. Set the GEMINI_API_KEY, OPENAI_API_KEY or ANTHROPIC_API_KEY secret on this Supabase project." },
         500,
       );
     }
 
     let content: string;
 
-    if (openaiKey) {
+    if (geminiKey) {
+      // responseMimeType pins JSON output — the same guarantee OpenAI's
+      // response_format gives. Without it Gemini wraps the object in prose or
+      // markdown fences and the parse below rejects a perfectly good extraction.
+      const resp = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${geminiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+            contents: [{ role: "user", parts: [{ text: trimmed }] }],
+            generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
+          }),
+        },
+      );
+      if (resp.status === 429) return json({ error: "Rate limited by the AI provider. Please try again shortly." }, 429);
+      if (!resp.ok) {
+        console.error("Gemini error", resp.status, await resp.text());
+        return json({ error: "The AI service could not process this PDF right now." }, 502);
+      }
+      const payload = await resp.json();
+      content = payload.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
+    } else if (openaiKey) {
       const resp = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },

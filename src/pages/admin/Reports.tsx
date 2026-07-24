@@ -31,6 +31,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageContainer, PageHeader } from "@/components/admin/PageContainer";
 import { EmptyState, EmptyReportArt } from "@/components/admin/EmptyState";
+import { InsightsTabs } from "@/components/admin/InsightsTabs";
 import { MeterRow, SectionPanel } from "@/components/admin/SectionPanel";
 import { StatTile } from "@/components/admin/StatTile";
 import { StatusBadge } from "@/components/survey/StatusBadge";
@@ -164,6 +165,7 @@ export default function Reports() {
     return (
       <PageContainer>
         <PageHeader eyebrow="Insights" title="Reports" subtitle="Period-over-period research analysis, ready for official review." />
+        <InsightsTabs />
         <div className="mt-6 rounded-surface border border-border/70 bg-card">
           <EmptyState
             illustration={<EmptyReportArt />}
@@ -220,6 +222,8 @@ export default function Reports() {
           </>
         }
       />
+
+      <InsightsTabs />
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-12">
         {/* 1 · Executive summary */}

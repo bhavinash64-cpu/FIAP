@@ -75,8 +75,10 @@ const NAV_GROUPS: NavGroup[] = [
     labelKey: "navGroupInsights",
     items: [
       { to: "/app/responses", labelKey: "navResponses", icon: Inbox },
-      { to: "/app/analytics", labelKey: "navAnalytics", icon: BarChart3 },
-      { to: "/app/reports", labelKey: "navReports", icon: FileText },
+      /* Analytics and Reports are one destination with two tabs — see
+         components/admin/InsightsTabs. The /app/reports route stays live and is
+         reached from that tab, so existing bookmarks keep working. */
+      { to: "/app/analytics", labelKey: "navInsights", icon: BarChart3 },
       /* Export Center is hidden. Exporting now happens on Responses, against the
          filters already applied there — a separate destination meant re-picking
          the same survey and date range and then wondering why the two files

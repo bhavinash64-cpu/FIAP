@@ -17,6 +17,10 @@ enable_confirmations = false
 [functions.extract-questions]
 verify_jwt = true
 
+# Authoring aid for admins only — same posture as extract-questions.
+[functions.translate]
+verify_jwt = true
+
 [functions.submit-response]
 verify_jwt = false
 

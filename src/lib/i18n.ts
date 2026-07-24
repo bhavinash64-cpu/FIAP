@@ -30,6 +30,7 @@ export const dict = {
   dashboard: { en: "Dashboard", te: "డాష్‌బోర్డ్" },
   surveys: { en: "Surveys", te: "సర్వేలు" },
   analytics: { en: "Analytics", te: "విశ్లేషణలు" },
+  navInsights: { en: "Analytics & Reports", te: "విశ్లేషణలు & నివేదికలు" },
   reports: { en: "Reports", te: "నివేదికలు" },
   auditLog: { en: "Audit log", te: "ఆడిట్ లాగ్" },
 

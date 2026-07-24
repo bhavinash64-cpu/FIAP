@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageContainer, PageHeader } from "@/components/admin/PageContainer";
 import { EmptyChartArt, EmptyState } from "@/components/admin/EmptyState";
+import { InsightsTabs } from "@/components/admin/InsightsTabs";
 import { SectionPanel } from "@/components/admin/SectionPanel";
 import { StatTile } from "@/components/admin/StatTile";
 import { useT } from "@/lib/i18n";
@@ -64,6 +65,8 @@ export default function AnalyticsHome() {
         title={t("navAnalytics")}
         subtitle="Open a survey to explore its per-question breakdowns, response trends and text answers."
       />
+
+      <InsightsTabs />
 
       {isPending ? (
         <div className="mt-6 grid gap-4 lg:grid-cols-12">
