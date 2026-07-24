@@ -98,13 +98,20 @@ async function handleResolve(supabase: SupabaseClient, body: Json) {
 
   const { data: c } = await supabase
     .from("family_cases")
-    .select("id, reference_id, family_head_name, phone, preferred_language, status, expires_at, survey_id")
+    .select("id, reference_id, family_head_name, phone, preferred_language, status, expires_at, scheduled_for, survey_id")
     .eq("access_token", token)
     .maybeSingle();
 
   if (!c) return json({ state: "not_found" });
   if (new Date(c.expires_at as string) < new Date() || c.status === "expired") {
     return json({ state: "expired" });
+  }
+  // Scheduled for later: a VALID slip that has simply not opened yet. Kept
+  // distinct from expired and not_found so the family reads "come back on the
+  // 3rd" instead of a dead end — and so the link_opened event below does not
+  // fire for an assessment they cannot actually start.
+  if (c.scheduled_for && new Date(c.scheduled_for as string) > new Date()) {
+    return json({ state: "scheduled", opensAt: c.scheduled_for });
   }
 
   const { data: survey } = await supabase
@@ -204,6 +211,11 @@ async function handleLogin(supabase: SupabaseClient, body: Json, req: Request) {
   }
   if (matched.status === "expired" || new Date(matched.expires_at) < now) {
     return json({ error: "expired" }, 403);
+  }
+  // Right credentials, but the officer scheduled this one to open later. This
+  // is what makes the picked date a real gate rather than a note.
+  if (matched.scheduled_for && new Date(matched.scheduled_for) > now) {
+    return json({ error: "not_yet_open", opensAt: matched.scheduled_for }, 403);
   }
 
   await supabase
@@ -594,6 +606,8 @@ interface FamilyCaseRow {
   survey_id: string;
   status: string;
   expires_at: string;
+  /** When this assessment opens. NULL = immediately. */
+  scheduled_for: string | null;
   opened_at: string | null;
   started_at: string | null;
   response_id: string | null;

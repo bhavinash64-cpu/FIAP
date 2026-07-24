@@ -170,6 +170,9 @@ export default function FamilyLogin() {
             case "already_submitted":
               setFailure({ key: "familyErrAlreadyDone" });
               break;
+            case "not_yet_open":
+              setFailure({ key: "familyErrNotYetOpen" });
+              break;
             default:
               setFailure({ key: "familyErrNetwork" });
           }

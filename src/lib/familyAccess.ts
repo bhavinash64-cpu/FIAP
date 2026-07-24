@@ -64,6 +64,8 @@ export interface AssessmentBundle {
 export type LinkResolution =
   | { state: "not_found" }
   | { state: "expired" }
+  /** A valid slip whose assessment the officer scheduled to open later. */
+  | { state: "scheduled"; opensAt: string }
   | {
       state: "ok";
       case: Pick<RespondentCase, "referenceId" | "familyHead" | "phoneHint" | "language" | "status">;
@@ -83,6 +85,7 @@ export type FamilyAccessErrorCode =
   | "no_session"
   | "session_expired"
   | "already_submitted"
+  | "not_yet_open"
   | "network"
   | "unknown";
 
@@ -105,6 +108,7 @@ const KNOWN_CODES: FamilyAccessErrorCode[] = [
   "no_session",
   "session_expired",
   "already_submitted",
+  "not_yet_open",
 ];
 
 async function call<T>(body: Record<string, unknown>): Promise<T> {

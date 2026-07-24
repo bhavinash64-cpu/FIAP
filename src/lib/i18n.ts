@@ -207,6 +207,7 @@ export const dict = {
   familyErrNetwork: { en: "Couldn't reach the assessment. Please check your connection and try again.", te: "మూల్యాంకనాన్ని చేరుకోలేకపోయాము. దయచేసి మీ కనెక్షన్‌ను సరిచూసి మళ్లీ ప్రయత్నించండి." },
   familyErrLockedRetry: { en: "You can try again in {n} minutes.", te: "{n} నిమిషాల్లో మళ్లీ ప్రయత్నించవచ్చు." },
   familyErrAlreadyDone: { en: "This assessment has already been completed. Thank you.", te: "ఈ మూల్యాంకనం ఇప్పటికే పూర్తయింది. ధన్యవాదాలు." },
+  familyErrNotYetOpen: { en: "This assessment has not opened yet. Please come back on the date shown on your slip.", te: "ఈ మూల్యాంకనం ఇంకా ప్రారంభం కాలేదు. మీ స్లిప్‌లో ఉన్న తేదీన మళ్లీ రండి." },
   familyNeedLinkTitle: { en: "Open your assessment link", te: "మీ మూల్యాంకన లింక్‌ను తెరవండి" },
   familyNeedLinkBody: {
     en: "Scan the QR code on your assessment slip, or open the link your field officer gave you. You will then be asked for your phone number.",

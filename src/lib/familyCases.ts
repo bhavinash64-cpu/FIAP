@@ -1,4 +1,5 @@
 import { customAlphabet } from "nanoid";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/lib/audit";
 import type { FamilyCaseStatus } from "@/lib/familyAccess";
@@ -34,6 +35,8 @@ export interface FamilyCase {
   pin_issued_at: string;
   locked_until: string | null;
   expires_at: string;
+  /** When this assessment becomes answerable. NULL = available immediately. */
+  scheduled_for: string | null;
   opened_at: string | null;
   started_at: string | null;
   completed_at: string | null;
@@ -100,6 +103,14 @@ export const CASE_STATUSES: FamilyCaseStatus[] = [
 
 /** Unambiguous alphabet — no 0/o/1/l — because these get read aloud and retyped. */
 const genToken = customAlphabet("23456789abcdefghjkmnpqrstuvwxyz", 22);
+
+/**
+ * `scheduled_for` postdates the generated Supabase types, so the typed client
+ * cannot see it. One deliberately untyped handle, confined to the assignment
+ * writer below — the same convention lib/familyFollowups.ts already uses for
+ * the followup_* columns. The row shape it returns is declared explicitly.
+ */
+const db = supabase as unknown as SupabaseClient;
 
 /** Strips +91 / leading 0 / spacing so lookups and uniqueness are on one form. */
 export function normalisePhone(raw: string): string {
@@ -259,6 +270,109 @@ export async function createFamilyCase(input: FamilyCaseInput): Promise<FamilyCa
   }
 
   throw new Error("Could not generate unique credentials. Please try again.");
+}
+
+export interface AssignmentResult {
+  created: FamilyCase[];
+  /** Instruments deliberately not created, with the reason an officer can act on. */
+  skipped: { survey_id: string; reason: string }[];
+}
+
+/**
+ * Assign a family one or more FURTHER instruments, each opening on a date the
+ * officer chooses.
+ *
+ * The follow-up chain (lib/familyFollowups.ts) answers "measure this family on
+ * the SAME instrument again, on a fixed cadence". This answers the other half
+ * of what officers actually ask: "this household should also do these two
+ * scales, starting next Monday."
+ *
+ * One row per instrument, built exactly as createFamilyCase builds them — so
+ * every assignment keeps its own token, slip, response and reference id, and a
+ * family's caseload stays a query rather than a nested column. That is what
+ * makes "allot as many as you wish" free: it is N rows, not a new data model.
+ *
+ * An instrument the family is already actively answering is SKIPPED, not
+ * failed. The database forbids a second live case for the same (phone,
+ * instrument) via uq_family_cases_active_phone_survey, and an officer ticking
+ * five boxes should not lose the other four to one duplicate.
+ */
+export async function assignAssessments(opts: {
+  /** The family whose identity every new case copies. */
+  from: Pick<
+    FamilyCase,
+    "deceased_name" | "family_head_name" | "relationship" | "phone" | "district" | "village" | "preferred_language" | "notes"
+  >;
+  surveyIds: string[];
+  /** ISO instant the assessments open. null/undefined = available immediately. */
+  scheduledFor?: string | null;
+  /** Days the credentials stay valid, counted from the opening date. */
+  validDays?: number;
+}): Promise<AssignmentResult> {
+  const { data: auth } = await supabase.auth.getUser();
+  const phone = normalisePhone(opts.from.phone);
+  const scheduledFor = opts.scheduledFor ?? null;
+
+  // Validity runs from when the family can actually START, not from today: a
+  // slip handed over a month early must not burn a month of its own window.
+  const opensAt = scheduledFor ? Math.max(Date.parse(scheduledFor), Date.now()) : Date.now();
+  const expiresAt = new Date(opensAt + (opts.validDays ?? 90) * 86_400_000).toISOString();
+
+  const created: FamilyCase[] = [];
+  const skipped: { survey_id: string; reason: string }[] = [];
+
+  for (const surveyId of opts.surveyIds) {
+    let settled = false;
+
+    for (let attempt = 0; attempt < 6 && !settled; attempt++) {
+      const { data, error } = await db
+        .from("family_cases")
+        .insert({
+          deceased_name: opts.from.deceased_name,
+          family_head_name: opts.from.family_head_name,
+          relationship: opts.from.relationship,
+          phone,
+          district: opts.from.district,
+          village: opts.from.village,
+          preferred_language: opts.from.preferred_language,
+          notes: opts.from.notes,
+          survey_id: surveyId,
+          access_token: genToken(),
+          expires_at: expiresAt,
+          scheduled_for: scheduledFor,
+          officer_id: auth.user?.id ?? null,
+          officer_name: auth.user?.email ?? null,
+        })
+        .select("*")
+        .single();
+
+      if (!error) {
+        const row = data as unknown as FamilyCase;
+        created.push(row);
+        await recordEvent(row.id, "created", { officer: auth.user?.email, scheduled_for: scheduledFor });
+        await logAudit("family_case.assign", "family_case", row.id, {
+          reference_id: row.reference_id,
+          survey_id: surveyId,
+          scheduled_for: scheduledFor,
+        });
+        settled = true;
+        break;
+      }
+
+      // The active-case index, not a token collision: this family already has
+      // this instrument open. Record it and move to the next tick-box.
+      if (/uq_family_cases_active_phone_survey/i.test(error.message)) {
+        skipped.push({ survey_id: surveyId, reason: "already assigned and still open" });
+        settled = true;
+        break;
+      }
+      if (!/duplicate key|unique/i.test(error.message)) throw error;
+    }
+
+    if (!settled) skipped.push({ survey_id: surveyId, reason: "could not mint a unique link" });
+  }
+
+  return { created, skipped };
 }
 
 export async function updateFamilyCase(

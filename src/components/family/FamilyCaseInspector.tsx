@@ -43,6 +43,7 @@ import { Inspector, InspectorSection } from "@/components/admin/Inspector";
 import { MeterRow } from "@/components/admin/SectionPanel";
 import { CaseStatusBadge } from "@/components/family/CaseStatusBadge";
 import { CaseSlipSheet } from "@/components/family/CaseSlipSheet";
+import { AssignAssessmentsPanel } from "@/components/family/AssignAssessmentsPanel";
 import { FollowUpPanel } from "@/components/family/FollowUpPanel";
 import {
   caseQrFileName,
@@ -445,6 +446,13 @@ export function FamilyCaseInspector(props: {
           {/* ── Follow-up ───────────────────────────────────────────────── */}
           <InspectorSection title="Follow-up">
             <FollowUpPanel caseRow={caseRow} onChanged={onChanged} />
+          </InspectorSection>
+
+          {/* ── More assessments ────────────────────────────────────────────
+              Follow-up repeats THIS instrument on a cadence; this hands the
+              family additional instruments on a date the officer picks. */}
+          <InspectorSection title="Assign more assessments">
+            <AssignAssessmentsPanel caseRow={caseRow} onChanged={onChanged} />
           </InspectorSection>
 
           {/* ── Timeline ────────────────────────────────────────────────── */}
