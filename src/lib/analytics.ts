@@ -132,7 +132,7 @@ export async function getTextAnswers(questionId: string, opts: { search?: string
     .select("id, value_text, survey_responses(submitted_at)", { count: "exact" })
     .eq("question_id", questionId)
     .not("value_text", "is", null)
-    .order("id", { ascending: false })
+    .order("answered_at", { ascending: false, nullsFirst: false })
     .range(offset, offset + limit - 1);
   if (search.trim()) query = query.ilike("value_text", `%${search.trim()}%`);
   const { data, error, count } = await query;

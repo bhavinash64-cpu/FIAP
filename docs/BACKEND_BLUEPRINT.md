@@ -71,7 +71,7 @@ file (or the 23 migrations individually) and documents exactly what it contains.
 - `question_bank_item_options` — options per bank item.
 
 **Family case workflow (credentialled — app reads/writes cases + events)**
-- `family_cases` — the case; `reference_id` (`JIF-YYYY-#####` via sequence), `access_token`, optional `pin`, status lifecycle, draft autosave, longitudinal follow-up columns, self-FK `followup_parent_id`. FK → survey is **RESTRICT** (can't delete a survey with live cases).
+- `family_cases` — the case; `reference_id` (`PDH-YYYY-#####` via sequence), `access_token`, optional `pin`, status lifecycle, draft autosave, longitudinal follow-up columns, self-FK `followup_parent_id`. FK → survey is **RESTRICT** (can't delete a survey with live cases).
 - `family_case_sessions` — **service_role only**; stores only SHA-256 hashes of session tokens.
 - `family_case_events` — per-case audit timeline.
 - `family_login_attempts` — **service_role only**; per-IP login throttle.

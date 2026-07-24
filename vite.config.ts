@@ -19,6 +19,10 @@ export default defineConfig(({ mode }) => ({
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
   },
   build: {
+    // exceljs (~938 kB) and pdfjs are dynamically imported, so they never hit
+    // first paint; raise the limit so their standalone async chunks stop
+    // tripping the 500 kB warning as noise.
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
         manualChunks: {

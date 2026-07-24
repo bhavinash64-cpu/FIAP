@@ -8,10 +8,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Landing from "./pages/Landing";
-import Auth from "./pages/Auth";
 import FamilyLogin from "./pages/family/FamilyLogin";
-import SecureAccessNotice from "./pages/family/SecureAccessNotice";
-import NotFound from "./pages/NotFound";
 import { AppShell } from "@/components/AppShell";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireRespondent } from "@/components/family/RequireRespondent";
@@ -38,6 +35,10 @@ const SurveyReport = lazy(() => import("./pages/admin/SurveyReport"));
 const Reports = lazy(() => import("./pages/admin/Reports"));
 const FamilyCases = lazy(() => import("./pages/admin/FamilyCases"));
 const DemoPreview = lazy(() => import("./pages/DemoPreview"));
+// Off the family critical path — lazy so the family/rural first paint stays small.
+const Auth = lazy(() => import("./pages/Auth"));
+const SecureAccessNotice = lazy(() => import("./pages/family/SecureAccessNotice"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 /**
  * The assessment itself is lazy, but the family LOGIN is not (imported above).

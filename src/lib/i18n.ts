@@ -205,6 +205,8 @@ export const dict = {
   familyErrExpired: { en: "This assessment link has expired. Please contact your field officer for a new one.", te: "ఈ మూల్యాంకన లింక్ గడువు ముగిసింది. కొత్తదాని కోసం మీ క్షేత్ర అధికారిని సంప్రదించండి." },
   familyErrTooMany: { en: "Too many attempts from this connection. Please try again a little later.", te: "ఈ కనెక్షన్ నుండి చాలా ప్రయత్నాలు జరిగాయి. దయచేసి కొంతసేపటి తర్వాత ప్రయత్నించండి." },
   familyErrNetwork: { en: "Couldn't reach the assessment. Please check your connection and try again.", te: "మూల్యాంకనాన్ని చేరుకోలేకపోయాము. దయచేసి మీ కనెక్షన్‌ను సరిచూసి మళ్లీ ప్రయత్నించండి." },
+  familyErrLockedRetry: { en: "You can try again in {n} minutes.", te: "{n} నిమిషాల్లో మళ్లీ ప్రయత్నించవచ్చు." },
+  familyErrAlreadyDone: { en: "This assessment has already been completed. Thank you.", te: "ఈ మూల్యాంకనం ఇప్పటికే పూర్తయింది. ధన్యవాదాలు." },
   familyNeedLinkTitle: { en: "Open your assessment link", te: "మీ మూల్యాంకన లింక్‌ను తెరవండి" },
   familyNeedLinkBody: {
     en: "Scan the QR code on your assessment slip, or open the link your field officer gave you. You will then be asked for your phone number.",

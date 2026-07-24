@@ -5,7 +5,6 @@ import {
   ArrowRight, Lock, BookOpen, LifeBuoy,
   ClipboardList, Library, QrCode, Users, BarChart3, FileText, ScrollText,
   ShieldCheck, KeyRound, Database, Fingerprint, EyeOff,
-  FlaskConical, Building2, Stethoscope, GraduationCap,
   BadgeCheck, type LucideIcon,
 } from "lucide-react";
 import { LangToggle } from "@/components/LangToggle";
@@ -87,7 +86,7 @@ const CARD_LIFT = "transition-transform duration-300 ease-[cubic-bezier(0.16,1,0
 const WORKFLOW = [
   { icon: ClipboardList, title: "Create assessment", line: "Build questionnaires from validated instruments." },
   { icon: QrCode, title: "Generate QR", line: "Publish a secure QR code and shareable link." },
-  { icon: Users, title: "Family responds", line: "Answered in English or Telugu, with no login." },
+  { icon: Users, title: "Family responds", line: "Answered in English or Telugu on a secure personal link." },
   { icon: Database, title: "Responses stored", line: "Structured answers recorded securely." },
   { icon: BarChart3, title: "Analytics", line: "Trends and per-question breakdowns, live." },
   { icon: FileText, title: "Research reports", line: "Printable reports and exportable datasets." },
@@ -105,7 +104,7 @@ const WORKFLOW = [
 const FEATURES: { icon: LucideIcon; title: string; line: string }[] = [
   { icon: ClipboardList, title: "Survey Builder", line: "Design structured questionnaires from validated research instruments." },
   { icon: Library, title: "Research Instruments", line: "Eight peer-reviewed scales, reproduced with their original response anchors." },
-  { icon: Users, title: "Family Assessment", line: "A guided, bilingual assessment experience that needs no login." },
+  { icon: Users, title: "Family Assessment", line: "A guided, bilingual assessment opened from a secure personal link." },
   { icon: QrCode, title: "QR Distribution", line: "A secure QR code and shareable link for every published survey." },
   { icon: BarChart3, title: "Analytics", line: "Trends, completion and per-question findings, live." },
   { icon: FileText, title: "Reports", line: "Printable, period-over-period research reports." },
@@ -127,15 +126,7 @@ const SECURITY: { icon: LucideIcon; title: string; line: string }[] = [
   { icon: Database, title: "Encrypted Storage", line: "Responses are stored securely, with row-level protection." },
   { icon: ScrollText, title: "Audit Trails", line: "Every administrative action is recorded immutably." },
   { icon: Fingerprint, title: "Secure Authentication", line: "Session-based sign-in; public sign-up is disabled." },
-  { icon: EyeOff, title: "Institutional Privacy", line: "Respondents need no login or personal identifiers." },
-];
-
-const SECTORS: { icon: LucideIcon; label: string }[] = [
-  { icon: FlaskConical, label: "Research" },
-  { icon: Users, label: "Nonprofits & NGOs" },
-  { icon: Building2, label: "Community Programs" },
-  { icon: Stethoscope, label: "Healthcare" },
-  { icon: GraduationCap, label: "Academic Organizations" },
+  { icon: EyeOff, title: "Respondent Privacy", line: "Families answer through a private, single-purpose link — no account, no dashboard." },
 ];
 
 /* ── Primitives ─────────────────────────────────────────────────────────── */
@@ -289,8 +280,8 @@ export default function Landing() {
               transition={{ duration: 0.8, ease: PREMIUM_EASE, delay: 0.3 }}
               className="mt-3 max-w-xl t-caption text-muted-foreground"
             >
-              Built for authorised researchers and institutions to conduct structured
-              family assessments using validated research instruments.
+              A private platform for conducting structured family assessments using
+              validated research instruments.
             </motion.p>
 
             <motion.div
@@ -493,26 +484,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── Trust / built for ──────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
-        <Reveal className="text-center">
-          <SectionEyebrow>Built for</SectionEyebrow>
-          <RevealHeading lines={["Serving research and wellbeing teams"]} className="mx-auto mt-3 max-w-2xl t-title font-semibold tracking-tight" />
-        </Reveal>
-        <div className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {SECTORS.map((s, i) => (
-            <Reveal key={s.label} delay={i * 0.06}>
-              <div className={cn(CARD, "flex flex-col items-center gap-3 px-4 py-8 text-center")}>
-                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-accent text-primary">
-                  <s.icon className={cn("h-6 w-6", CARD_ICON)} strokeWidth={1.6} />
-                </span>
-                <span className="t-caption font-semibold">{s.label}</span>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
       {/* ── Footer ─────────────────────────────────────────────────────── */}
       <footer id="footer" className="scroll-mt-20 border-t border-border bg-card">
         <div className="mx-auto max-w-[1200px] px-4 py-12 sm:px-6 lg:px-8">
@@ -523,8 +494,7 @@ export default function Landing() {
                 <span className="t-card font-semibold tracking-tight">PsyDigiHealth</span>
               </div>
               <p className="mt-3 t-caption leading-relaxed text-muted-foreground">
-                A secure family-assessment research platform for authorised research teams and
-                institutions.
+                A private, secure platform for family-assessment research.
               </p>
             </div>
 

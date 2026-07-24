@@ -1697,7 +1697,7 @@ CREATE SEQUENCE IF NOT EXISTS public.family_case_ref_seq START 1;
 
 CREATE OR REPLACE FUNCTION public.next_family_reference_id()
 RETURNS text LANGUAGE sql VOLATILE SET search_path = public AS $$
-  SELECT 'JIF-' || to_char(now(), 'YYYY') || '-' ||
+  SELECT 'PDH-' || to_char(now(), 'YYYY') || '-' ||
          lpad(nextval('public.family_case_ref_seq')::text, 5, '0');
 $$;
 
@@ -3185,7 +3185,7 @@ BEGIN
       now() + make_interval(days => d.followup_interval_days)
     FROM due d
     -- reference_id comes from its own DEFAULT so the new round gets a fresh
-    -- JIF- number an officer can read out, not a suffix of the parent's.
+    -- PDH- number an officer can read out, not a suffix of the parent's.
     RETURNING id, followup_parent_id, followup_round
   )
   INSERT INTO public.family_case_events (case_id, event, detail, actor)

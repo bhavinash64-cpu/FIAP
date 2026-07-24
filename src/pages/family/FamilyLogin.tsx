@@ -167,6 +167,9 @@ export default function FamilyLogin() {
             case "too_many_attempts":
               setFailure({ key: "familyErrTooMany" });
               break;
+            case "already_submitted":
+              setFailure({ key: "familyErrAlreadyDone" });
+              break;
             default:
               setFailure({ key: "familyErrNetwork" });
           }
@@ -285,7 +288,7 @@ export default function FamilyLogin() {
                       {t(failure.key)}
                       {failure.key === "familyErrLocked" && retryMinutes !== null && (
                         <div className="mt-1 font-semibold tabular-nums">
-                          You can try again in {retryMinutes} minute{retryMinutes === 1 ? "" : "s"}.
+                          {t("familyErrLockedRetry", { n: retryMinutes })}
                         </div>
                       )}
                     </div>

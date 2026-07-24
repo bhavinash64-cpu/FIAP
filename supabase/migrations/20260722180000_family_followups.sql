@@ -184,7 +184,7 @@ BEGIN
       now() + make_interval(days => d.followup_interval_days)
     FROM due d
     -- reference_id comes from its own DEFAULT so the new round gets a fresh
-    -- JIF- number an officer can read out, not a suffix of the parent's.
+    -- PDH- number an officer can read out, not a suffix of the parent's.
     RETURNING id, followup_parent_id, followup_round
   )
   INSERT INTO public.family_case_events (case_id, event, detail, actor)
